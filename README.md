@@ -1,23 +1,12 @@
-# 001 - Patrones de Arquitectura
+# 001 - Patrones (Arquitectura y Diseño)
 
 Material de apoyo para la Unidad 1 (Introducción a Desarrollo complejo) de Programación 2 - UCSE.
 
-Cada carpeta corresponde a un **patrón de arquitectura** visto en la presentación. Dentro hay un ejemplo de implementación con un proyecto distinto, y un `README.md` que describe qué archivos y estructura deberían tener para aplicar el patrón.
+## Contenido
 
-## Patrones incluidos
+| Carpeta | Descripción |
+|---------|-------------|
+| [patrones-arquitectura/](patrones-arquitectura/) | Patrones de arquitectura de software (capas, MVC, microservicios, etc.) con ejemplos y guías de implementación. |
+| [patrones-diseno/](patrones-diseno/) | Patrones de diseño (creacionales, estructurales, comportamiento) con ejemplos y guías de implementación. |
 
-| # | Patrón | Ejemplo |
-|---|--------|---------|
-| 01 | Arquitectura en Capas | Tienda online |
-| 02 | Cliente-Servidor | API REST de clima |
-| 03 | MVC | Blog |
-| 04 | MVP | Calculadora de escritorio |
-| 05 | MVVM | Listado de tareas (mobile) |
-| 06 | Pub/Sub | Sistema de notificaciones |
-| 07 | SOA | Banca (servicios) |
-| 08 | Orientada a eventos | Dashboard de monitoreo |
-| 09 | Basada en Componentes | Portal modular |
-| 10 | Pipeline | ETL de datos |
-| 11 | Microservicios | E-commerce |
-
-Entrad a cada subcarpeta y leed el `README.md` del ejemplo para saber qué archivos implementar.
+Cada subcarpeta contiene ejemplos distintos y `README.md` que indican qué archivos implementar en cada caso.
