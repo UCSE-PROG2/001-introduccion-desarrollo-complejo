@@ -2,27 +2,14 @@
 
 Este ejemplo aplica el **patrón cliente-servidor**: el servidor expone servicios (API de clima) y el cliente los consume (app o navegador).
 
-## Papel de cada parte
+## Estructura
 
-- **Servidor**: expone endpoints REST (p. ej. temperatura por ciudad, pronóstico). Responde con JSON.
-- **Cliente**: hace peticiones HTTP (GET/POST), parsea la respuesta y muestra datos al usuario.
+- **servidor/** — Punto de entrada, controladores, servicio y DTOs del API.
+- **cliente/** — Cliente HTTP que consume el API y muestra resultados.
 
-## Archivos que deberían ir en esta carpeta
+## Configuración
 
-### Servidor (`servidor/` o `server/`)
-- `Application.java` o `Main.java` — Punto de entrada del servidor (Spring Boot, Javalin, etc.).
-- `ClimaController.java` o `ClimaResource.java` — Rutas: `GET /clima?ciudad=...`, `GET /pronostico/{ciudad}`.
-- `ServicioClima.java` — Lógica: obtener datos (mock, archivo o API externa) y devolver DTOs.
-- `ClimaDTO.java` — Objeto con temperatura, ciudad, fecha, etc., para serializar a JSON.
-- `pom.xml` o `build.gradle` — Dependencias (p. ej. Spring Web o Javalin, Jackson).
-
-### Cliente (`cliente/` o `client/`)
-- `ClienteClima.java` — Usa `HttpClient` (Java 11+) o similar para llamar a `GET /clima?ciudad=...`.
-- `Main.java` o clase con `main` — Ejecuta el cliente, imprime resultado o muestra en consola.
-- Opcional: `ClimaResponse.java` — POJO para deserializar el JSON de la respuesta.
-
-### Configuración
-- `config.properties` o constantes con `URL_BASE` del servidor (ej. `http://localhost:8080`) para que el cliente sepa a dónde conectarse.
+- `config.properties` o constantes con `URL_BASE` del servidor (ej. `http://localhost:8080`) para que el cliente sepa a dónde conectarse. Puede ir en la raíz del proyecto o en `cliente/`.
 
 ## Cómo comprobar que está bien aplicado
 

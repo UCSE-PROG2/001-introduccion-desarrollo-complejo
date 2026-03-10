@@ -2,29 +2,15 @@
 
 Este ejemplo aplica el **patrón Publicador/Suscriptor (Pub/Sub)**: unos componentes publican mensajes en canales o temas y otros se suscriben para recibirlos, sin conocerse entre sí. Típico en sistemas distribuidos y de alta escalabilidad.
 
-## Papel de cada parte
+## Estructura
 
-- **Publicadores**: emiten eventos (ej. “nueva notificación”, “alerta por stock bajo”).
-- **Broker/Canal**: medio donde se publican y del que se suscriben (puede ser en memoria para el ejercicio).
-- **Suscriptores**: se registran a un tema y reaccionan al recibir mensajes (enviar email, mostrar en UI, escribir en log).
+- **core/** — EventBus o broker y tipo de mensaje/evento.
+- **publicadores/** — Componentes que emiten eventos a un tema.
+- **suscriptores/** — Componentes que se registran a un tema y reaccionan al recibir mensajes.
 
-## Archivos que deberían ir en esta carpeta
+## Punto de entrada
 
-### Núcleo Pub/Sub (`core/` o `pubsub/`)
-- `EventBus.java` o `MessageBroker.java` — Interfaz o clase que permita `suscribir(tema, handler)` y `publicar(tema, mensaje)`. Mantiene la lista de suscriptores por tema y les notifica al publicar.
-- `Mensaje.java` o `Evento.java` — Objeto que se publica (tema, payload, timestamp opcional).
-
-### Publicadores (`publicadores/`)
-- `ServicioNotificaciones.java` — Cuando ocurre un evento (ej. “pedido enviado”), llama a `eventBus.publicar("notificaciones", mensaje)`.
-- `ServicioAlertas.java` — Publica en tema "alertas" (ej. stock bajo, fallo de pago).
-
-### Suscriptores (`suscriptores/`)
-- `EmailSubscriber.java` — Se suscribe a "notificaciones" (o "emails"); al recibir mensaje, simula envío de email (log o mock).
-- `LogSubscriber.java` — Suscrito a uno o varios temas; escribe cada mensaje en consola o archivo.
-- `UINotificationSubscriber.java` — Suscrito a "notificaciones"; actualiza una cola o lista que la interfaz consume para mostrar notificaciones en pantalla.
-
-### Punto de entrada
-- `Main.java` — Crea el EventBus, registra suscriptores, dispara uno o más publicadores y comprueba que los suscriptores reciben los mensajes.
+- **Main.java** — Crea el EventBus, registra suscriptores, dispara uno o más publicadores y comprueba que los suscriptores reciben los mensajes. Puede estar en la raíz del ejemplo.
 
 ## Cómo comprobar que está bien aplicado
 

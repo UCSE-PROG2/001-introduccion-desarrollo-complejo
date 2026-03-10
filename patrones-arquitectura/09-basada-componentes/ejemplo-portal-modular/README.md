@@ -2,33 +2,16 @@
 
 Este ejemplo aplica **arquitectura basada en componentes**: la aplicación se construye a partir de **componentes** reutilizables y autónomos, definidos por sus **interfaces** (qué ofrecen y qué necesitan). Cada componente es una unidad independiente que se ensambla en un portal (inicio, noticias, clima, usuario).
 
-## Papel de cada parte
+## Estructura
 
-- **Componentes**: módulos con interfaz pública (ej. “proporcionar fragmento HTML y datos”, “consumir servicio de noticias”). Implementación interna oculta.
-- **Contenedor/Portal**: ensambla los componentes, les inyecta dependencias (servicios, config) y los coloca en la página o layout.
+- **api/** — Interfaz del componente y contexto que el portal pasa a cada uno.
+- **componentes/** — Implementaciones concretas (noticias, clima, usuario).
+- **servicios/** — Servicios compartidos que los componentes consumen (inyectados por el portal).
+- **portal/** — Contenedor que ensambla componentes y renderiza la página.
 
-## Archivos que deberían ir en esta carpeta
+## Punto de entrada
 
-### Definición de interfaces (`api/` o `interfaces/`)
-- `ComponentePortal.java` — Interfaz: `String getId()`, `String getTitulo()`, `Fragmento renderizar(ContextoPortal ctx)` (o `Map<String,Object> getDatos()` para que el portal renderice). Define el contrato que todo componente debe cumplir.
-- `ContextoPortal.java` — Objeto que el portal pasa a cada componente (usuario actual, preferencias, servicios compartidos) para que puedan obtener datos.
-
-### Componentes concretos (`componentes/`)
-- `ComponenteNoticias.java` — Implementa `ComponentePortal`; internamente usa un `ServicioNoticias` (inyectado) para obtener últimas noticias y devuelve título + datos o fragmento.
-- `ComponenteClima.java` — Implementa `ComponentePortal`; usa `ServicioClima` y devuelve datos para mostrar clima actual.
-- `ComponenteUsuario.java` — Muestra datos del usuario logueado; usa `ContextoPortal` para obtener el usuario.
-
-### Servicios compartidos (`servicios/`)
-- `ServicioNoticias.java` — Lista de noticias (mock o API).
-- `ServicioClima.java` — Datos de clima (mock o API).
-- Estos son los “requisitos” que algunos componentes necesitan; el contenedor los inyecta.
-
-### Contenedor/Portal (`portal/`)
-- `Portal.java` — Lista o registro de componentes (`ComponenteNoticias`, `ComponenteClima`, `ComponenteUsuario`). Método `renderizarPagina()` que recorre los componentes, les pasa el contexto y ensambla el resultado (HTML, JSON o estructura para una vista).
-- `ConfiguracionPortal.java` — Define qué componentes se cargan y en qué orden (archivo de config o código).
-
-### Punto de entrada
-- `Main.java` — Crea servicios, instancia componentes, los registra en el portal y ejecuta `renderizarPagina()` o arranca un servidor que sirve la página del portal.
+- **Main.java** — Crea servicios, instancia componentes, los registra en el portal y ejecuta `renderizarPagina()` o arranca un servidor que sirve la página del portal. Puede estar en la raíz del ejemplo.
 
 ## Cómo comprobar que está bien aplicado
 
