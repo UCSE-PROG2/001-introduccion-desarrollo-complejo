@@ -4,27 +4,27 @@ Este documento repasa los conceptos necesarios para encarar el ejercicio de patr
 
 ---
 
-## 1. POO en Java
+## POO en Java
 
 ### Creación de clases
 
 Una clase en Java se define con la palabra clave `class`. Los atributos representan el estado del objeto y los métodos su comportamiento. Por convención, los atributos se declaran `private` para proteger el estado interno.
 
 ```java
-public class Product {
-    private String name;
-    private double price;
-    private String category;
+public class Producto {
+    private String nombre;
+    private double precio;
+    private String categoria;
 
     // Constructor: se ejecuta al crear una instancia
-    public Product(String name, double price, String category) {
-        this.name = name;
-        this.price = price;
-        this.category = category;
+    public Producto(String nombre, double precio, String categoria) {
+        this.nombre = nombre;
+        this.precio = precio;
+        this.categoria = categoria;
     }
 
-    public void printInfo() {
-        System.out.println(name + " - $" + price + " (" + category + ")");
+    public void imprimirInfo() {
+        System.out.println(nombre + " - $" + precio + " (" + categoria + ")");
     }
 }
 ```
@@ -34,19 +34,19 @@ El constructor tiene el mismo nombre que la clase y no declara tipo de retorno. 
 Una clase puede tener múltiples constructores con distintos parámetros (sobrecarga de constructores):
 
 ```java
-public class Product {
-    private String name;
-    private double price;
+public class Producto {
+    private String nombre;
+    private double precio;
 
-    public Product(String name, double price) {
-        this.name = name;
-        this.price = price;
+    public Producto(String nombre, double precio) {
+        this.nombre = nombre;
+        this.precio = precio;
     }
 
     // Constructor alternativo con precio por defecto
-    public Product(String name) {
-        this.name = name;
-        this.price = 0.0;
+    public Producto(String nombre) {
+        this.nombre = nombre;
+        this.precio = 0.0;
     }
 }
 ```
@@ -58,11 +58,11 @@ public class Product {
 Para crear un objeto se usa la palabra clave `new`, que reserva memoria y ejecuta el constructor:
 
 ```java
-Product laptop = new Product("Laptop", 1500.0, "Electronica");
-Product remera = new Product("Remera", 25.0, "Ropa");
+Producto laptop = new Producto("Laptop", 1500.0, "Electronica");
+Producto remera = new Producto("Remera", 25.0, "Ropa");
 
-laptop.printInfo(); // Laptop - $1500.0 (Electronica)
-remera.printInfo(); // Remera - $25.0 (Ropa)
+laptop.imprimirInfo(); // Laptop - $1500.0 (Electronica)
+remera.imprimirInfo(); // Remera - $25.0 (Ropa)
 ```
 
 Cada objeto es una instancia independiente. Modificar `laptop` no afecta a `remera`.
@@ -70,9 +70,41 @@ Cada objeto es una instancia independiente. Modificar `laptop` no afecta a `reme
 Es importante distinguir entre la **referencia** y el **objeto**. La variable `laptop` es una referencia que apunta al objeto en memoria. Si se asigna esa referencia a otra variable, ambas apuntan al mismo objeto:
 
 ```java
-Product a = new Product("Laptop", 1500.0, "Electronica");
-Product b = a; // b apunta al mismo objeto que a, no es una copia
+Producto a = new Producto("Laptop", 1500.0, "Electronica");
+Producto b = a; // b apunta al mismo objeto que a, no es una copia
 ```
+
+---
+
+### Getters y setters
+
+Los atributos privados no son accesibles desde fuera de la clase. Para permitir la lectura y escritura controlada se usan métodos públicos llamados **getters** y **setters**:
+
+```java
+public class Producto {
+    private String nombre;
+    private double precio;
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public double getPrecio() {
+        return precio;
+    }
+
+    public void setPrecio(double precio) {
+        if (precio < 0) throw new IllegalArgumentException("El precio no puede ser negativo");
+        this.precio = precio;
+    }
+}
+```
+
+El setter puede incluir validaciones antes de asignar el valor, lo que no sería posible si el atributo fuera público. Los IDEs como IntelliJ IDEA y Eclipse pueden generar getters y setters automáticamente.
 
 ---
 
@@ -82,36 +114,36 @@ La herencia permite crear una clase nueva basada en una existente, reutilizando 
 
 ```java
 // Clase base
-public class Product {
-    private String name;
-    private double price;
+public class Producto {
+    private String nombre;
+    private double precio;
 
-    public Product(String name, double price) {
-        this.name = name;
-        this.price = price;
+    public Producto(String nombre, double precio) {
+        this.nombre = nombre;
+        this.precio = precio;
     }
 
-    public double getPrice() { return price; }
-    public String getName() { return name; }
+    public double getPrecio() { return precio; }
+    public String getNombre() { return nombre; }
 
-    public String getDescription() {
-        return name + " - $" + price;
+    public String getDescripcion() {
+        return nombre + " - $" + precio;
     }
 }
 
-// Subclase: hereda de Product y agrega comportamiento
-public class ElectronicProduct extends Product {
-    private int warrantyMonths;
+// Subclase: hereda de Producto y agrega comportamiento
+public class ProductoElectronico extends Producto {
+    private int mesesGarantia;
 
-    public ElectronicProduct(String name, double price, int warrantyMonths) {
-        super(name, price); // llama al constructor de la clase padre
-        this.warrantyMonths = warrantyMonths;
+    public ProductoElectronico(String nombre, double precio, int mesesGarantia) {
+        super(nombre, precio); // llama al constructor de la clase padre
+        this.mesesGarantia = mesesGarantia;
     }
 
     // Sobrescribe el método de la clase padre
     @Override
-    public String getDescription() {
-        return super.getDescription() + " - Garantía: " + warrantyMonths + " meses";
+    public String getDescripcion() {
+        return super.getDescripcion() + " - Garantía: " + mesesGarantia + " meses";
     }
 }
 ```
@@ -120,13 +152,32 @@ La palabra `super` se usa para referirse a la clase padre: `super(...)` llama a 
 
 La anotación `@Override` no es obligatoria, pero es una buena práctica: indica explícitamente que el método está sobrescribiendo uno de la clase padre, y el compilador verifica que efectivamente exista ese método.
 
+---
+
+### Polimorfismo
+
+El polimorfismo permite tratar objetos de distintos tipos de manera uniforme a través de un tipo común (clase padre o interfaz). El método que se ejecuta se determina por el **tipo real del objeto** en tiempo de ejecución, no por el tipo de la referencia.
+
 ```java
-Product p = new ElectronicProduct("Laptop", 1500.0, 12);
-System.out.println(p.getDescription());
-// Laptop - $1500.0 - Garantía: 12 meses
+Producto p = new ProductoElectronico("Laptop", 1500.0, 12);
+System.out.println(p.getDescripcion());
+// Laptop - $1500.0 - Garantía: 12 meses  ← ejecuta la versión de ProductoElectronico
 ```
 
-Nótese que la variable `p` es de tipo `Product`, pero el objeto es un `ElectronicProduct`. Java ejecuta el método de la subclase gracias al **polimorfismo**: el método que se ejecuta se determina por el tipo real del objeto, no por el tipo de la referencia.
+Esto se vuelve muy poderoso cuando se trabaja con listas de objetos heterogéneos:
+
+```java
+List<Producto> productos = new ArrayList<>();
+productos.add(new Producto("Remera", 25.0));
+productos.add(new ProductoElectronico("Laptop", 1500.0, 12));
+productos.add(new ProductoElectronico("Celular", 800.0, 6));
+
+for (Producto p : productos) {
+    System.out.println(p.getDescripcion()); // cada objeto ejecuta su propia versión
+}
+```
+
+El código que itera la lista no necesita saber qué tipo concreto tiene cada elemento: simplemente llama al método y Java se encarga de ejecutar la implementación correcta.
 
 ---
 
@@ -135,21 +186,21 @@ Nótese que la variable `p` es de tipo `Product`, pero el objeto es un `Electron
 Cuando se quiere definir un contrato que varias clases deben cumplir sin compartir implementación, se usa una **interfaz**:
 
 ```java
-public interface ShippingStrategy {
-    double calculateCost(double weight, double distance);
+public interface EstrategiaEnvio {
+    double calcularCosto(double peso, double distancia);
 }
 
-public class TruckShipping implements ShippingStrategy {
+public class EnvioCamion implements EstrategiaEnvio {
     @Override
-    public double calculateCost(double weight, double distance) {
-        return weight * 3 + distance * 0.5;
+    public double calcularCosto(double peso, double distancia) {
+        return peso * 3 + distancia * 0.5;
     }
 }
 
-public class AirShipping implements ShippingStrategy {
+public class EnvioAereo implements EstrategiaEnvio {
     @Override
-    public double calculateCost(double weight, double distance) {
-        return weight * 10 + distance * 2;
+    public double calcularCosto(double peso, double distancia) {
+        return peso * 10 + distancia * 2;
     }
 }
 ```
@@ -157,20 +208,20 @@ public class AirShipping implements ShippingStrategy {
 Una clase puede implementar múltiples interfaces. Si además se quiere compartir código o estado entre subclases, se usa una **clase abstracta**:
 
 ```java
-public abstract class ProductFactory {
+public abstract class FabricaProducto {
     // Método abstracto: cada subclase debe implementarlo
-    public abstract Product createProduct(String name, double price);
+    public abstract Producto crearProducto(String nombre, double precio);
 
     // Método concreto: compartido por todas las subclases
-    public void logCreation(Product p) {
-        System.out.println("Producto creado: " + p.getName());
+    public void registrarCreacion(Producto p) {
+        System.out.println("Producto creado: " + p.getNombre());
     }
 }
 
-public class ElectronicaFactory extends ProductFactory {
+public class FabricaElectronica extends FabricaProducto {
     @Override
-    public Product createProduct(String name, double price) {
-        return new ElectronicProduct(name, price, 12);
+    public Producto crearProducto(String nombre, double precio) {
+        return new ProductoElectronico(nombre, precio, 12);
     }
 }
 ```
@@ -188,193 +239,99 @@ Regla práctica: usá **interfaz** cuando solo querés definir un contrato. Usá
 
 ---
 
-### Getters y setters
+### Miembros estáticos
 
-Los atributos privados no son accesibles desde fuera de la clase. Para permitir la lectura y escritura controlada se usan métodos públicos llamados **getters** y **setters**:
+Los miembros declarados con `static` pertenecen a la **clase**, no a una instancia particular. Existe una sola copia compartida por todos los objetos.
 
 ```java
-public class Product {
-    private String name;
-    private double price;
+public class Contador {
+    private static int total = 0; // compartido por todas las instancias
+    private int id;
 
-    public String getName() {
-        return name;
+    public Contador() {
+        total++;
+        this.id = total;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public static int getTotal() { return total; }
+    public int getId() { return id; }
+}
 
-    public double getPrice() {
-        return price;
-    }
+Contador c1 = new Contador();
+Contador c2 = new Contador();
+System.out.println(Contador.getTotal()); // 2 — se llama sobre la clase, no sobre un objeto
+```
 
-    public void setPrice(double price) {
-        if (price < 0) throw new IllegalArgumentException("El precio no puede ser negativo");
-        this.price = price;
+Los métodos estáticos se invocan sobre la clase directamente (`Contador.getTotal()`) y no pueden acceder a atributos de instancia porque no tienen `this`.
+
+Este mecanismo es la base del patrón **Singleton**: se usa un atributo estático para guardar la única instancia de la clase y un método estático para acceder a ella.
+
+---
+
+### Colecciones
+
+Java provee estructuras de datos en el paquete `java.util`. Las más usadas son `ArrayList` y `HashMap`.
+
+**`ArrayList`:** lista ordenada que puede crecer dinámicamente.
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+List<Producto> carrito = new ArrayList<>();
+carrito.add(new Producto("Laptop", 1500.0));
+carrito.add(new Producto("Mouse", 30.0));
+
+System.out.println(carrito.size()); // 2
+
+for (Producto p : carrito) {
+    System.out.println(p.getNombre());
+}
+
+carrito.remove(0); // elimina el primer elemento
+```
+
+**`HashMap`:** mapa de clave-valor, útil para buscar objetos por identificador.
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+Map<String, Producto> catalogo = new HashMap<>();
+catalogo.put("laptop-001", new Producto("Laptop", 1500.0));
+catalogo.put("mouse-001", new Producto("Mouse", 30.0));
+
+Producto p = catalogo.get("laptop-001"); // acceso en tiempo constante
+System.out.println(p.getNombre()); // Laptop
+
+catalogo.containsKey("tablet-001"); // false
+```
+
+También se pueden combinar ambas estructuras. Por ejemplo, un mapa donde cada clave agrupa una lista de productos (útil para representar categorías):
+
+```java
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+Map<String, List<Producto>> categorias = new HashMap<>();
+
+// Agregar productos a cada categoría
+categorias.put("electronica", new ArrayList<>());
+categorias.get("electronica").add(new Producto("Laptop", 1500.0));
+categorias.get("electronica").add(new Producto("Celular", 800.0));
+
+categorias.put("ropa", new ArrayList<>());
+categorias.get("ropa").add(new Producto("Remera", 25.0));
+
+// Recorrer todas las categorías y sus productos
+for (Map.Entry<String, List<Producto>> entrada : categorias.entrySet()) { // entrada: un par clave-valor del mapa (ej: "electronica" → [Laptop, Celular])
+    System.out.println("Categoría: " + entrada.getKey());                  // getKey(): la clave String (ej: "electronica")
+    for (Producto p : entrada.getValue()) {                                 // getValue(): la List<Producto> asociada a esa clave
+        System.out.println("  - " + p.getNombre());                        // p: cada Producto dentro de esa lista
     }
 }
 ```
 
-El setter puede incluir validaciones antes de asignar el valor, lo que no sería posible si el atributo fuera público. Los IDEs como IntelliJ IDEA y Eclipse pueden generar getters y setters automáticamente.
-
----
-
-## 2. Principios de Diseño Orientado a Objetos
-
-Estos principios son la base que justifica por qué existen los patrones de diseño. Sin entenderlos, los patrones parecen recetas sin motivo.
-
-### Programar hacia interfaces, no implementaciones
-
-En lugar de depender de una clase concreta, el código debe depender de una abstracción (interfaz o clase abstracta). Esto permite cambiar la implementación sin modificar el código que la usa.
-
-**Mal:** el código queda atado a `PaypalProvider`.
-```java
-PaypalProvider payment = new PaypalProvider();
-payment.processPayment(100.0);
-```
-
-**Bien:** el código solo conoce el contrato `PaymentProvider`.
-```java
-PaymentProvider payment = new PaypalProvider();
-payment.processPayment(100.0);
-```
-
-La diferencia parece pequeña, pero si mañana se cambia `PaypalProvider` por `MercadoPagoProvider`, en el segundo caso solo se modifica una línea. En sistemas grandes, este principio evita cambios en cascada.
-
----
-
-### Composición sobre herencia
-
-La herencia crea una relación rígida entre clases. La composición —tener una referencia a otro objeto— es más flexible porque permite cambiar el comportamiento en tiempo de ejecución.
-
-**Con herencia:** para agregar un medio de envío hay que crear una subclase por cada combinación posible.
-```
-Order
-├── OrderWithAirShipping
-├── OrderWithTruckShipping
-└── OrderWithSeaShipping
-```
-
-**Con composición:** `Order` contiene una referencia a `ShippingStrategy` y se puede asignar cualquier implementación:
-```java
-public class Order {
-    private ShippingStrategy shippingStrategy;
-
-    public Order(ShippingStrategy strategy) {
-        this.shippingStrategy = strategy;
-    }
-
-    public double calculateShipping(double weight, double distance) {
-        return shippingStrategy.calculateCost(weight, distance);
-    }
-}
-```
-
-Agregar un nuevo medio de envío no requiere modificar `Order`, solo crear una nueva clase que implemente `ShippingStrategy`.
-
----
-
-### Principio Open/Closed
-
-> *"Las clases deben estar abiertas a la extensión pero cerradas a la modificación."*
-
-Una clase está **cerrada a la modificación** cuando su código existente no necesita cambiar para agregar nueva funcionalidad. Está **abierta a la extensión** cuando se puede ampliar su comportamiento agregando nuevas clases.
-
-**Ejemplo:** si el cálculo de envío está hardcodeado con `if/else`, agregar un nuevo tipo obliga a modificar la clase existente:
-```java
-// Viola Open/Closed
-public double calculateShipping(String type, double weight) {
-    if (type.equals("avion")) return weight * 10;
-    else if (type.equals("camion")) return weight * 3;
-    // Para agregar "barco" hay que editar este método
-}
-```
-
-Con Strategy, agregar `SeaShipping` no toca ninguna clase existente:
-```java
-public class SeaShipping implements ShippingStrategy {
-    public double calculateCost(double weight, double distance) {
-        return weight * 1.5 + distance * 0.2;
-    }
-}
-```
-
----
-
-### Principio de Responsabilidad Única
-
-> *"Una clase debe tener una sola razón para cambiar."*
-
-Si una clase maneja tanto la lógica de negocio como la creación de objetos y la persistencia, cualquier cambio en cualquiera de esas áreas la afecta. Separar responsabilidades hace el código más fácil de mantener y de testear.
-
-En el ejercicio:
-- `ProductFactory` tiene una sola responsabilidad: crear productos.
-- `ShippingStrategy` tiene una sola responsabilidad: calcular el costo de envío.
-- `Order.Builder` tiene una sola responsabilidad: construir una orden válida.
-
----
-
-### Qué son los patrones de diseño
-
-Un patrón de diseño es una solución probada a un problema recurrente de diseño. No es código que se copia directamente, sino una guía conceptual que se adapta al contexto particular.
-
-Se clasifican en tres grupos:
-
-| Tipo | Propósito | Ejemplos en este ejercicio |
-|------|-----------|---------------------------|
-| **Creacionales** | Cómo se crean los objetos | Singleton, Builder, Factory Method |
-| **Estructurales** | Cómo se componen las clases | Bridge |
-| **De comportamiento** | Cómo se comunican los objetos | Strategy |
-
-El sitio [Refactoring Guru](https://refactoring.guru/es/design-patterns) tiene explicaciones y ejemplos en Java para cada patrón.
-
----
-
-## 3. Arquitectura en Capas
-
-### Qué es la separación de concerns
-
-"Concern" es cualquier responsabilidad o preocupación del sistema: mostrar información, aplicar reglas de negocio, guardar datos. La separación de concerns propone que cada parte del código se ocupe de una sola de estas responsabilidades.
-
-Cuando una sola clase hace todo —muestra por pantalla, calcula precios y guarda en memoria— cualquier cambio pequeño puede romper funcionalidad no relacionada. Las capas son la forma estructural de aplicar este principio.
-
-### Las tres capas
-
-```
-presentacion/   →   logica/   →   datos/
-```
-
-Las dependencias fluyen en una sola dirección: la presentación conoce la lógica, la lógica conoce los datos. Nunca al revés.
-
-| Capa | Responsabilidad | Qué va ahí |
-|------|----------------|------------|
-| **Presentación** | Interactuar con el usuario | Leer input, mostrar resultados, clase `Main` |
-| **Lógica** | Reglas de negocio y patrones | Factories, strategies, builders, cálculos |
-| **Datos** | Representar y almacenar información | Clases de dominio (`Product`, `Order`), repositorios en memoria |
-
-### Ejemplo de flujo entre capas
-
-```java
-// presentacion/Main.java
-ShoppingCart cart = ShoppingCart.getInstance();           // lógica
-cart.addProduct(new ElectronicaFactory().createProduct("Laptop", 1500)); // lógica + datos
-
-ShippingStrategy envio = new TruckShipping();            // lógica
-Order order = new Order.Builder()
-    .withCart(cart)
-    .withShippingStrategy(envio)
-    .build();                                            // lógica
-
-System.out.println("Total: " + order.getTotal());       // presentación
-```
-
-`Main` solo coordina: llama a la lógica, recibe resultados y los muestra. No calcula nada ni conoce los detalles de implementación de cada patrón.
-
-### Por qué importa en este ejercicio
-
-Aunque los datos están en memoria y no hay una base de datos real, la separación en capas sigue siendo válida. Prepara el código para que en el futuro se pueda:
-
-- Cambiar la presentación de consola a una interfaz web sin tocar la lógica.
-- Reemplazar el almacenamiento en memoria por una base de datos sin tocar la presentación.
-- Testear la lógica de negocio de forma aislada, sin depender de cómo se muestran los datos.
+La convención es declarar la variable con el tipo de la interfaz (`List`, `Map`) y asignar la implementación concreta (`ArrayList`, `HashMap`). Así, si más adelante se necesita cambiar la implementación, solo se modifica una línea.
