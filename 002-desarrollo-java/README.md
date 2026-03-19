@@ -1,0 +1,871 @@
+# Unidad 4 - Desarrollo de aplicaciones con bases de datos relacionales
+
+## Índice
+
+1. [Introducción](#1-introducción)
+2. [Diseño y levantamiento de la base de datos](#2-diseño-y-levantamiento-de-la-base-de-datos)
+3. [Conexión directa con JDBC](#3-conexión-directa-con-jdbc)
+4. [ORM - Object Relational Mapping](#4-orm---object-relational-mapping)
+5. [JPA - Java Persistence API](#5-jpa---java-persistence-api)
+6. [Hibernate](#6-hibernate)
+7. [Relaciones entre entidades](#7-relaciones-entre-entidades)
+8. [Pruebas unitarias con H2](#8-pruebas-unitarias-con-h2)
+9. [Conceptos avanzados clave](#9-conceptos-avanzados-clave)
+
+---
+
+## 1. Introducción
+
+El desarrollo de aplicaciones con bases de datos relacionales implica tres grandes pasos:
+
+| Paso | Descripción |
+|------|-------------|
+| **Diseño de la BD** | Definir tablas, campos, relaciones, restricciones e índices |
+| **Conexión** | Conectar la aplicación Java a la base de datos (via JDBC o un ORM) |
+| **Acceso a datos** | Crear objetos que provean métodos para realizar operaciones CRUD (crear, leer, actualizar, eliminar) |
+
+---
+
+## 2. Diseño y levantamiento de la base de datos
+
+### Motor vs. Cliente
+
+Una base de datos tiene dos componentes:
+- **Motor**: administra las tablas y los datos (servidor)
+- **Cliente**: interfaz para administrar la base de datos (ej: MySQL Workbench)
+
+### Levantar MySQL con Docker
+
+En lugar de instalar MySQL en la máquina, se usa un contenedor Docker:
+
+```bash
+docker run --name nombre -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
+```
+
+Conectarse desde MySQL Workbench con:
+
+```
+hostname: 127.0.0.1
+port:     3306
+username: root
+password: 123456
+```
+
+Una vez conectado, se crea un **schema** (equivale a "base de datos"), tablas y datos.
+
+### Problema de persistencia
+
+Cuando el contenedor Docker se apaga:
+- El servidor de BD queda inaccesible
+- Si se crea un segundo contenedor, **no tiene acceso a los datos del primero**
+- Si se borra el contenedor, **se pierden todos los datos**
+
+### Solución: Docker Volume
+
+Un **Docker Volume** permite almacenar y acceder a datos persistentes, independientemente del ciclo de vida del contenedor.
+
+```bash
+# 1. Crear el volumen
+docker volume create mysql-data
+
+# 2. Iniciar MySQL usando ese volumen
+docker run --name mysql-container \
+  -p 3306:3306 \
+  -v mysql-data:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=123456 \
+  -d mysql
+```
+
+Los datos en `/var/lib/mysql` dentro del contenedor se almacenan en el volumen `mysql-data`. Si el contenedor se detiene o elimina, los datos persisten. Un nuevo contenedor que monte el mismo volumen tendrá acceso a todos los datos previos.
+
+---
+
+## 3. Conexión directa con JDBC
+
+**JDBC** (Java Database Connectivity) es un conjunto de APIs que permite a aplicaciones Java interactuar con bases de datos relacionales. Requiere un **driver** específico para cada motor.
+
+### Dependencia en Gradle
+
+```groovy
+dependencies {
+    implementation 'mysql:mysql-connector-java:8.0.28'
+}
+```
+
+### Modelo de ejemplo
+
+Se trabaja con una tabla `users`:
+
+```sql
+CREATE TABLE users (
+    id     INT PRIMARY KEY AUTO_INCREMENT,
+    name   VARCHAR(45) NOT NULL,
+    active BIT NOT NULL
+);
+```
+
+### Tres objetos centrales de JDBC
+
+| Objeto | Descripción |
+|--------|-------------|
+| `Connection` | Representa la conexión a la base de datos |
+| `Statement` / `PreparedStatement` | Comando SQL a ejecutar |
+| `ResultSet` | Objeto que contiene los resultados de una consulta |
+
+### Lectura de datos (SELECT)
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        Connection connection = null;
+        try {
+            // Establecer conexión
+            connection = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/schema", "user", "password"
+            );
+
+            // Ejecutar consulta
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM users");
+
+            // Procesar resultados
+            while (resultSet.next()) {
+                String name   = resultSet.getString("name");
+                boolean active = resultSet.getBoolean("active");
+                System.out.println(name + " " + active);
+            }
+
+            connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### Escritura de datos (INSERT y UPDATE)
+
+Se usa `PreparedStatement` para evitar **SQL Injection** y parametrizar las consultas:
+
+```java
+String url = "jdbc:mysql://localhost:3306/schema";
+
+try (Connection conn = DriverManager.getConnection(url, "user", "password")) {
+
+    // INSERT
+    String insertQuery = "INSERT INTO users (name, active) VALUES (?, ?)";
+    PreparedStatement stmt = conn.prepareStatement(insertQuery);
+    stmt.setString(1, "John");
+    stmt.setBoolean(2, true);
+    int rowsAffected = stmt.executeUpdate();
+    System.out.println(rowsAffected + " filas afectadas");
+
+    // UPDATE
+    String updateQuery = "UPDATE users SET active = ? WHERE id = ?";
+    PreparedStatement stmt2 = conn.prepareStatement(updateQuery);
+    stmt2.setBoolean(1, false);
+    stmt2.setInt(2, 1);
+    int rowsAffected2 = stmt2.executeUpdate();
+    System.out.println(rowsAffected2 + " filas afectadas");
+
+    stmt.close();
+    stmt2.close();
+
+} catch (SQLException e) {
+    e.printStackTrace();
+}
+```
+
+> **Nota**: El bloque `try-with-resources` cierra automáticamente la conexión al finalizar.
+
+### Limitaciones de JDBC puro
+
+Aunque JDBC funciona, tiene desventajas en proyectos reales:
+- Código SQL disperso por toda la aplicación
+- Mapeo manual entre columnas y atributos de objetos Java
+- Difícil de mantener ante cambios en el modelo
+- No maneja relaciones entre tablas de forma automática
+
+Para resolver esto existe el patrón **ORM**.
+
+---
+
+## 4. ORM - Object Relational Mapping
+
+Los **ORM** (mapeadores objeto-relacional) son herramientas que permiten trabajar con objetos Java sin preocuparse por la estructura de la base de datos subyacente.
+
+Un ORM proporciona una **capa de abstracción** entre la aplicación y la BD, mapeando automáticamente:
+- Clases Java → Tablas
+- Instancias de clases → Filas
+- Atributos → Columnas
+
+### Ventajas
+
+| Ventaja | Descripción |
+|---------|-------------|
+| **Reducción de complejidad** | Se trabaja con objetos en lugar de SQL puro |
+| **Portabilidad** | Cambiar de MySQL a PostgreSQL requiere mínimos cambios |
+| **Seguridad** | Previene ataques de SQL Injection por diseño |
+| **Productividad** | Automatiza el mapeo objeto-tabla |
+| **Mantenimiento** | Cambios en el modelo se reflejan sin modificar SQL manualmente |
+
+### Patrón DAO (Data Access Object)
+
+El patrón **DAO** es la forma estándar de organizar el acceso a datos en una aplicación con ORM. Separa la lógica de negocio del acceso a la base de datos.
+
+**Estructura típica:**
+
+```
+model/
+  Alumno.java         ← Entidad JPA (mapea a la tabla)
+dao/
+  AlumnoDAO.java      ← Métodos CRUD para Alumno
+utils/
+  HibernateUtil.java  ← Configuración de la sesión
+```
+
+**Beneficio principal**: si se cambia el ORM o la BD, solo se modifica el DAO, no el resto de la aplicación.
+
+---
+
+## 5. JPA - Java Persistence API
+
+**JPA** es una *especificación* de Java que define cómo mapear objetos a bases de datos relacionales. No es una implementación, sino un estándar que los ORM como Hibernate implementan.
+
+JPA define interfaces y anotaciones para mapear entidades a tablas mediante un archivo `persistence.xml`.
+
+### Conceptos clave de JPA
+
+| Concepto | Anotación | Descripción |
+|----------|-----------|-------------|
+| **Entidad** | `@Entity` | Clase que representa una tabla. Cada instancia = una fila |
+| **Identificador** | `@Id` | Campo que identifica de forma única cada instancia |
+| **Columna** | `@Column` | Mapea un atributo a una columna específica |
+| **Relaciones** | `@OneToMany`, `@ManyToOne`, etc. | Define relaciones entre entidades |
+| **EntityManager** | — | Clase principal para interactuar con la BD (insertar, buscar, actualizar, eliminar) |
+| **Transacciones** | `@Transactional` | Garantizan la integridad de los datos |
+
+### Ejemplo: Entidad JPA
+
+```java
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "active")
+    private boolean active;
+
+    // Getters y setters
+}
+```
+
+### Estrategias de @GeneratedValue
+
+| Estrategia | Descripción | Uso recomendado |
+|------------|-------------|-----------------|
+| `IDENTITY` | Usa AUTO_INCREMENT de la BD | MySQL — simple, pero deshabilita inserciones en batch |
+| `SEQUENCE` | Usa secuencias de la BD | PostgreSQL, Oracle — recomendada por rendimiento |
+| `AUTO` | Hibernate decide según el dialecto | Portable, pero el comportamiento varía por BD |
+| `TABLE` | Usa una tabla auxiliar para IDs | Evitar — el peor rendimiento (locking) |
+
+### Ejemplo: persistence.xml
+
+```xml
+<persistence-unit name="myPersistenceUnit" transaction-type="RESOURCE_LOCAL">
+
+    <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+    <class>com.example.User</class>
+
+    <properties>
+        <property name="javax.persistence.jdbc.driver"
+                  value="com.mysql.cj.jdbc.Driver"/>
+        <property name="javax.persistence.jdbc.url"
+                  value="jdbc:mysql://localhost:3306/myDatabase"/>
+        <property name="javax.persistence.jdbc.user"     value="root"/>
+        <property name="javax.persistence.jdbc.password" value="password"/>
+        <property name="hibernate.dialect"
+                  value="org.hibernate.dialect.MySQL5Dialect"/>
+        <property name="hibernate.hbm2ddl.auto"          value="update"/>
+    </properties>
+
+</persistence-unit>
+```
+
+### Opción hibernate.hbm2ddl.auto
+
+| Valor | Comportamiento | Cuándo usar |
+|-------|---------------|-------------|
+| `create` | Borra el esquema existente y lo recrea | Desarrollo desde cero |
+| `create-drop` | Crea al iniciar y borra al cerrar la `SessionFactory` | Tests unitarios (BD limpia en cada ejecución) |
+| `update` | Agrega tablas/columnas nuevas, no borra datos existentes | Desarrollo activo |
+| `validate` | Valida que el esquema coincida con las entidades (error si no) | Verificación en integración |
+| `none` | No hace nada | Producción |
+
+> **Producción**: nunca usar `create`, `update` ni `create-drop` en producción. Para gestionar el esquema en ambientes productivos se usan herramientas de migración como **Flyway** o **Liquibase**.
+
+### Ejemplo: EntityManager
+
+```java
+// Configurar el EntityManagerFactory
+EntityManagerFactory emf =
+    Persistence.createEntityManagerFactory("myPersistenceUnit");
+
+// Crear el EntityManager
+EntityManager em = emf.createEntityManager();
+```
+
+### Operaciones CRUD con EntityManager
+
+```java
+// INSERTAR
+User user = new User();
+user.setName("John");
+user.setActive(true);
+
+em.getTransaction().begin();
+em.persist(user);
+em.getTransaction().commit();
+
+// ACTUALIZAR
+User userToUpdate = em.find(User.class, 1L);
+userToUpdate.setName("Jane");
+
+em.getTransaction().begin();
+em.merge(userToUpdate);
+em.getTransaction().commit();
+
+// CONSULTAR (JPQL)
+TypedQuery<User> query = em.createQuery(
+    "SELECT u FROM User u WHERE u.active = :active", User.class
+);
+query.setParameter("active", true);
+List<User> activeUsers = query.getResultList();
+
+// ELIMINAR
+User userToDelete = em.find(User.class, 1L);
+em.getTransaction().begin();
+em.remove(userToDelete);
+em.getTransaction().commit();
+```
+
+---
+
+## 6. Hibernate
+
+**Hibernate** es la implementación de JPA más popular para Java. Es un framework ORM que permite mapear objetos a tablas de forma transparente, trabajando con sesiones en lugar de SQL directo.
+
+### Ventajas de Hibernate sobre JDBC puro
+
+- **Menos código**: no se escribe SQL para operaciones básicas
+- **Portabilidad**: traduce operaciones a SQL específico de cada BD mediante dialectos
+- **Rendimiento**: tiene caché de primer y segundo nivel para reducir consultas
+- **Relaciones complejas**: maneja `@OneToMany`, `@ManyToMany`, etc. automáticamente
+
+### Dependencias en Gradle
+
+```groovy
+dependencies {
+    implementation 'mysql:mysql-connector-java:8.0.26'
+    implementation 'org.hibernate:hibernate-core:5.5.7.Final'
+    implementation 'org.hibernate:hibernate-entitymanager:5.5.7.Final'
+}
+```
+
+> **Nota sobre versiones**: Hibernate 6.x reemplazó el paquete `javax.persistence` por `jakarta.persistence`. Los ejemplos de esta unidad usan Hibernate 5.x con `javax.persistence`.
+
+### 6.1 Definir una Entidad
+
+```java
+import javax.persistence.*;
+
+@Entity
+@Table(name = "alumnos")
+public class Alumno {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "nombre")
+    private String nombre;
+
+    public Integer getId()              { return id; }
+    public void setId(Integer id)       { this.id = id; }
+    public String getNombre()           { return nombre; }
+    public void setNombre(String nombre){ this.nombre = nombre; }
+}
+```
+
+### 6.2 Configuración: hibernate.cfg.xml
+
+Se crea dentro de la carpeta `resources/`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+
+        <!-- Conexión a la base de datos -->
+        <property name="hibernate.connection.driver_class">
+            com.mysql.cj.jdbc.Driver
+        </property>
+        <property name="hibernate.connection.url">
+            jdbc:mysql://localhost:3306/usuarios?serverTimezone=UTC
+        </property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">123456</property>
+
+        <!-- Dialecto: le indica a Hibernate qué SQL generar -->
+        <property name="hibernate.dialect">
+            org.hibernate.dialect.MySQL8Dialect
+        </property>
+
+        <!-- Autodetección de entidades -->
+        <property name="hibernate.archive.autodetection">class</property>
+
+        <!-- Caché desactivado (recomendado al aprender) -->
+        <property name="hibernate.cache.use_second_level_cache">false</property>
+        <property name="hibernate.cache.use_query_cache">false</property>
+
+        <!-- Registrar la entidad -->
+        <mapping class="org.example.model.Alumno"/>
+
+    </session-factory>
+</hibernate-configuration>
+```
+
+### 6.3 HibernateUtil: gestión de la SessionFactory
+
+La `SessionFactory` es costosa de crear (lee la configuración, establece el pool de conexiones), por lo que se instancia **una sola vez** usando el patrón Singleton:
+
+```java
+package org.example.utils;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+
+public class HibernateUtil {
+
+    private static final SessionFactory sessionFactory;
+
+    static {
+        try {
+            Configuration configuration = new Configuration().configure();
+            sessionFactory = configuration.buildSessionFactory();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize Hibernate Util", e);
+        }
+    }
+
+    public static Session getSession() {
+        return sessionFactory.openSession();
+    }
+}
+```
+
+### 6.4 DAO: operaciones CRUD
+
+```java
+public class AlumnoDAO {
+
+    // GUARDAR
+    public void save(Alumno alumno) {
+        try (Session session = HibernateUtil.getSession()) {
+            session.beginTransaction();
+            session.save(alumno);
+            session.getTransaction().commit();
+        }
+    }
+
+    // ACTUALIZAR
+    public void update(Alumno alumno) {
+        try (Session session = HibernateUtil.getSession()) {
+            session.beginTransaction();
+            session.update(alumno);
+            session.getTransaction().commit();
+        }
+    }
+
+    // ELIMINAR
+    public void delete(Alumno alumno) {
+        try (Session session = HibernateUtil.getSession()) {
+            session.beginTransaction();
+            session.delete(alumno);
+            session.getTransaction().commit();
+        }
+    }
+
+    // BUSCAR POR ID
+    public Alumno findById(Integer id) {
+        try (Session session = HibernateUtil.getSession()) {
+            return session.get(Alumno.class, id);
+        }
+    }
+}
+```
+
+### Diferencias entre save(), persist() y merge()
+
+| Método | Estado del objeto | Retorna | Requiere transacción activa |
+|--------|-------------------|---------|----------------------------|
+| `save()` | Nuevo (transient) | ID generado | No obligatorio |
+| `persist()` | Nuevo (transient) | void | Sí |
+| `merge()` | Detached (modificado fuera de sesión) | Nueva instancia gestionada | Sí |
+
+> En proyectos nuevos se prefiere `persist()` y `merge()` por ser el estándar JPA.
+
+### 6.5 Consultas con CriteriaBuilder
+
+`CriteriaBuilder` permite construir consultas tipadas sin escribir SQL ni JPQL en texto:
+
+```java
+public List<Alumno> findAll(String nombre) {
+    try (Session session = HibernateUtil.getSession()) {
+
+        CriteriaBuilder builder = session.getCriteriaBuilder();
+        CriteriaQuery<Alumno> query = builder.createQuery(Alumno.class);
+        Root<Alumno> root = query.from(Alumno.class);
+
+        // Filtro: nombre contiene el texto buscado
+        Predicate likePredicate = builder.like(root.get("nombre"), "%" + nombre + "%");
+        query.where(likePredicate);
+        query.select(root);
+
+        return session.createQuery(query).getResultList();
+    }
+}
+```
+
+**Ventajas de CriteriaBuilder sobre JPQL en strings:**
+- Errores detectados en tiempo de compilación, no en ejecución
+- Más fácil construir consultas dinámicas (con filtros opcionales)
+- Totalmente tipado
+
+---
+
+## 7. Relaciones entre entidades
+
+Las bases de datos relacionales se caracterizan por tener tablas que se relacionan entre sí. Estas relaciones deben definirse también en el ORM.
+
+### Tipos de relaciones
+
+| Tipo | Anotación | Descripción |
+|------|-----------|-------------|
+| 1 a 1 | `@OneToOne` | Una entidad se asocia con exactamente una instancia de otra |
+| 1 a N | `@OneToMany` / `@ManyToOne` | Una entidad se asocia con varias instancias de otra |
+| N a N | `@ManyToMany` | Varias instancias de una entidad se asocian con varias de otra |
+
+### Ejemplo en MySQL: relación 1 a N
+
+```sql
+-- Tabla padre (uno)
+CREATE TABLE Materias (
+    id     INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL
+);
+
+-- Tabla hija (muchos) con clave foránea
+CREATE TABLE Alumnos (
+    id         INT PRIMARY KEY AUTO_INCREMENT,
+    nombre     VARCHAR(100) NOT NULL,
+    id_materia INT,
+    FOREIGN KEY (id_materia) REFERENCES Materias(id)
+);
+```
+
+### 7.1 Relación 1 a 1 (@OneToOne)
+
+```java
+@Entity
+public class Person {
+    @Id
+    private Long id;
+
+    @OneToOne
+    private Address address;  // Person es la entidad propietaria (tiene la FK)
+
+    // Getters y setters
+}
+
+@Entity
+public class Address {
+    @Id
+    private Long id;
+
+    @OneToOne(mappedBy = "address")  // Indica que Person es el propietario
+    private Person person;
+
+    // Getters y setters
+}
+```
+
+**¿Qué hace `mappedBy`?**
+Indica el **lado inverso** de la relación. La entidad propietaria es la que contiene la clave foránea en la tabla. `mappedBy` le dice a Hibernate que busque la columna en la tabla de la entidad propietaria, en lugar de crear una nueva columna.
+
+### 7.2 Relación 1 a N (@OneToMany / @ManyToOne)
+
+```java
+@Entity
+public class Department {
+    @Id
+    private Long id;
+
+    @OneToMany(mappedBy = "department")  // Un departamento tiene muchos empleados
+    private List<Employee> employees;
+
+    // Getters y setters
+}
+
+@Entity
+public class Employee {
+    @Id
+    private Long id;
+
+    @ManyToOne                           // Muchos empleados pertenecen a un departamento
+    private Department department;       // La FK está en la tabla Employee
+
+    // Getters y setters
+}
+```
+
+### 7.3 Relación N a N (@ManyToMany)
+
+Requiere una **tabla intermedia** para almacenar las asociaciones:
+
+```java
+@Entity
+public class Student {
+    @Id
+    private Long id;
+    private String name;
+
+    @ManyToMany
+    @JoinTable(
+        name = "student_course",                          // Nombre de la tabla intermedia
+        joinColumns = @JoinColumn(name = "student_id"),   // FK hacia Student
+        inverseJoinColumns = @JoinColumn(name = "course_id") // FK hacia Course
+    )
+    private List<Course> courses;
+
+    // Getters y setters
+}
+
+@Entity
+public class Course {
+    @Id
+    private Long id;
+    private String name;
+
+    @ManyToMany(mappedBy = "courses")  // Course es el lado inverso
+    private List<Student> students;
+
+    // Getters y setters
+}
+```
+
+La tabla `student_course` tiene dos columnas (`student_id` y `course_id`) que Hibernate gestiona automáticamente.
+
+### 7.4 @JoinColumn
+
+`@JoinColumn` especifica el **nombre de la columna de clave foránea** en la tabla de la entidad secundaria:
+
+```java
+@Entity
+public class EntidadPrincipal {
+    @Id @GeneratedValue
+    private Long id;
+
+    @OneToMany
+    @JoinColumn(name = "entidad_principal_id")  // Nombre de la FK en la tabla secundaria
+    private List<EntidadSecundaria> entidadesSecundarias;
+}
+
+@Entity
+public class EntidadSecundaria {
+    @Id @GeneratedValue
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "entidad_principal_id")  // Misma columna FK
+    private EntidadPrincipal entidadPrincipal;
+}
+```
+
+---
+
+## 8. Pruebas unitarias con H2
+
+### ¿Por qué H2?
+
+**H2** es una base de datos relacional escrita en Java que se ejecuta como motor embebido. No requiere instalar un servidor separado.
+
+| Característica | Descripción |
+|---------------|-------------|
+| **En memoria** | Los datos se almacenan en RAM, no en disco |
+| **Liviana y rápida** | Ideal para tests unitarios |
+| **Compatible con Hibernate** | Funciona con las mismas anotaciones JPA |
+| **Sin estado persistente** | Cada test arranca con la BD limpia |
+
+> H2 permite ejecutar tests unitarios que simulan el acceso a una BD relacional real, asegurando el correcto funcionamiento sin depender de MySQL.
+
+### Estructura de un test con Hibernate + H2
+
+```java
+public class UserDAOTest {
+
+    private SessionFactory sessionFactory;
+    private Session session;
+    private Transaction transaction;
+    private UserDAO userDAO;
+
+    @Before
+    public void setUp() {
+        // Inicializar Hibernate (apuntando a H2 en el hibernate.cfg.xml de tests)
+        Configuration configuration = new Configuration();
+        configuration.configure();
+
+        sessionFactory = configuration.buildSessionFactory();
+        session        = sessionFactory.openSession();
+        transaction    = session.beginTransaction();
+
+        userDAO = new UserDAO(session);
+    }
+
+    @After
+    public void tearDown() {
+        // Rollback para no persistir cambios entre tests
+        transaction.rollback();
+        session.close();
+        sessionFactory.close();
+    }
+
+    @Test
+    public void testCreateUser() {
+        User user = new User("John Doe", "johndoe@example.com");
+        userDAO.create(user);
+
+        assertNotNull(user.getId());
+
+        User savedUser = userDAO.getById(user.getId());
+        assertEquals(user, savedUser);
+    }
+
+    @Test
+    public void testGetAllUsers() {
+        User user1 = new User("John Doe", "johndoe@example.com");
+        User user2 = new User("Jane Doe", "janedoe@example.com");
+        userDAO.create(user1);
+        userDAO.create(user2);
+
+        List<User> userList = userDAO.getAll();
+
+        assertEquals(2, userList.size());
+        assertEquals(user1, userList.get(0));
+        assertEquals(user2, userList.get(1));
+    }
+}
+```
+
+**Patrón clave**: `@Before` configura el entorno y `@After` hace rollback, garantizando que cada test es independiente.
+
+---
+
+## 9. Conceptos avanzados clave
+
+### FetchType: LAZY vs EAGER
+
+Al acceder a relaciones entre entidades, Hibernate puede cargar los datos relacionados de dos formas:
+
+| Tipo | Comportamiento | Cuándo usar |
+|------|---------------|-------------|
+| `FetchType.LAZY` | Carga los datos relacionados **solo cuando se accede a ellos** | Por defecto en `@OneToMany` y `@ManyToMany`. Usar cuando no siempre se necesita la colección |
+| `FetchType.EAGER` | Carga los datos relacionados **junto con la entidad principal** | Por defecto en `@ManyToOne` y `@OneToOne`. Útil para datos siempre necesarios y de tamaño reducido |
+
+> **Atención con LAZY**: si se accede a la colección fuera de una sesión Hibernate activa, se lanzará una `LazyInitializationException`. Siempre acceder a datos lazy dentro del bloque `try (Session session = ...)`.
+
+> **Nunca usar EAGER para resolver el problema N+1**. La solución correcta es optimizar la consulta (con `JOIN FETCH` o `@EntityGraph`).
+
+```java
+// Cargar la lista de empleados solo cuando se llama a department.getEmployees()
+@OneToMany(mappedBy = "department", fetch = FetchType.LAZY)
+private List<Employee> employees;
+
+// Siempre cargar el departamento junto con el empleado
+@ManyToOne(fetch = FetchType.EAGER)
+private Department department;
+```
+
+> **Regla general**: usar `LAZY` por defecto en colecciones y `EAGER` en relaciones simples de tipo `@ManyToOne`.
+
+### El problema N+1
+
+El problema N+1 ocurre cuando se carga una lista de N entidades y luego se accede a una relación de cada una, generando N consultas adicionales (1 para la lista + N para los relacionados).
+
+**Ejemplo**: al cargar 10 departamentos con `LAZY` y acceder a los empleados de cada uno, Hibernate ejecuta 11 consultas (1 + 10).
+
+**Soluciones recomendadas**:
+
+```java
+// 1. JOIN FETCH en JPQL - carga todo en una sola query SQL
+TypedQuery<Department> query = em.createQuery(
+    "SELECT d FROM Department d JOIN FETCH d.employees", Department.class
+);
+
+// 2. CriteriaBuilder equivalente (en Hibernate Session)
+CriteriaQuery<Department> q = builder.createQuery(Department.class);
+Root<Department> root = q.from(Department.class);
+root.fetch("employees", JoinType.LEFT);
+
+// 3. @EntityGraph (declarativo, sin modificar la query base)
+// @EntityGraph(attributePaths = {"employees"})
+// List<Department> findAll();
+```
+
+> **Regla general**: configurar todas las relaciones como `LAZY` por defecto y optimizar consulta a consulta según las necesidades reales.
+
+### Resumen del flujo completo
+
+```
+Aplicación Java
+    ↓
+    DAO (AlumnoDAO)
+    ↓
+    HibernateUtil → Session
+    ↓
+    Hibernate ORM (mapea objetos ↔ tablas)
+    ↓
+    JDBC Driver (mysql-connector-java)
+    ↓
+    MySQL (en Docker con volumen persistente)
+```
+
+---
+
+## Referencia rápida de anotaciones
+
+| Anotación | Uso |
+|-----------|-----|
+| `@Entity` | Marca la clase como entidad JPA |
+| `@Table(name="...")` | Especifica el nombre de la tabla |
+| `@Id` | Campo que es clave primaria |
+| `@GeneratedValue(strategy=...)` | Estrategia de generación del ID |
+| `@Column(name="...")` | Mapea el atributo a una columna |
+| `@OneToOne` | Relación uno a uno |
+| `@OneToMany` | Relación uno a muchos |
+| `@ManyToOne` | Relación muchos a uno |
+| `@ManyToMany` | Relación muchos a muchos |
+| `@JoinColumn(name="...")` | Especifica la columna de clave foránea |
+| `@JoinTable(...)` | Define la tabla intermedia (N a N) |
+| `mappedBy="..."` | Indica el lado inverso de la relación |
