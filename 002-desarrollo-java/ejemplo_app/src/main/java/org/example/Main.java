@@ -8,14 +8,17 @@ import java.util.List;
 
 public class Main {
 
+    // Datos de conexión a la base de datos
+    // Asegurarse de que el schema "ejemplo_app" exista antes de ejecutar
     private static final String URL  = "jdbc:mysql://localhost:3306/ejemplo_app?serverTimezone=UTC";
     private static final String USER = "root";
     private static final String PASS = "123456";
 
     public static void main(String[] args) {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASS)) {
 
-            crearTabla(conn);
+        // DriverManager.getConnection() establece la conexión con la BD.
+        // El bloque try-with-resources cierra la conexión automáticamente al terminar.
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASS)) {
 
             // INSERT
             System.out.println("=== INSERT ===");
@@ -42,26 +45,20 @@ public class Main {
         }
     }
 
-    static void crearTabla(Connection conn) throws SQLException {
-        String sql = """
-            CREATE TABLE IF NOT EXISTS users (
-                id     INT PRIMARY KEY AUTO_INCREMENT,
-                name   VARCHAR(45) NOT NULL,
-                active BIT NOT NULL
-            )
-            """;
-        conn.createStatement().executeUpdate(sql);
-    }
-
+    // INSERT: se usa PreparedStatement para parametrizar la consulta.
+    // Los "?" son placeholders que se reemplazan con setString/setBoolean.
+    // Esto previene ataques de SQL Injection.
     static void insertar(Connection conn, String name, boolean active) throws SQLException {
         String sql = "INSERT INTO users (name, active) VALUES (?, ?)";
         PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setString(1, name);
-        stmt.setBoolean(2, active);
-        int filas = stmt.executeUpdate();
+        stmt.setString(1, name);    // reemplaza el primer "?"
+        stmt.setBoolean(2, active); // reemplaza el segundo "?"
+        int filas = stmt.executeUpdate(); // executeUpdate() se usa para INSERT, UPDATE y DELETE
         System.out.println(filas + " fila insertada: " + name);
     }
 
+    // UPDATE: mismo mecanismo que INSERT.
+    // executeUpdate() devuelve la cantidad de filas afectadas.
     static void actualizar(Connection conn, int id, boolean active) throws SQLException {
         String sql = "UPDATE users SET active = ? WHERE id = ?";
         PreparedStatement stmt = conn.prepareStatement(sql);
@@ -71,6 +68,7 @@ public class Main {
         System.out.println(filas + " fila actualizada");
     }
 
+    // DELETE: igual que UPDATE, se filtra por id con un placeholder.
     static void eliminar(Connection conn, int id) throws SQLException {
         String sql = "DELETE FROM users WHERE id = ?";
         PreparedStatement stmt = conn.prepareStatement(sql);
@@ -79,10 +77,13 @@ public class Main {
         System.out.println(filas + " fila eliminada");
     }
 
+    // SELECT: se usa executeQuery() (en lugar de executeUpdate()) porque devuelve resultados.
+    // ResultSet es un cursor que recorre las filas devueltas una por una con rs.next().
     static List<User> listar(Connection conn) throws SQLException {
         List<User> usuarios = new ArrayList<>();
         ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM users");
         while (rs.next()) {
+            // rs.getString(), rs.getInt(), rs.getBoolean() leen el valor de cada columna
             usuarios.add(new User(
                 rs.getInt("id"),
                 rs.getString("name"),
