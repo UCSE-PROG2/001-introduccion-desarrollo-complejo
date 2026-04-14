@@ -49,6 +49,36 @@ El flujo básico es:
 
 En el contexto de esta unidad, Docker permite tener MySQL funcionando en minutos, sin instalación manual, en cualquier sistema operativo.
 
+### Instalación en Windows
+
+#### Docker Desktop
+
+1. Verificar que la virtualización esté habilitada en la BIOS (en la mayoría de las PCs modernas ya lo está).
+2. Habilitar **WSL 2** (Windows Subsystem for Linux), que Docker Desktop usa como backend:
+   - Abrir PowerShell como administrador y ejecutar:
+     ```powershell
+     wsl --install
+     ```
+   - Reiniciar la PC si lo solicita.
+3. Descargar **Docker Desktop** desde [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/).
+4. Ejecutar el instalador y seguir los pasos (dejar marcada la opción "Use WSL 2 instead of Hyper-V").
+5. Al finalizar, iniciar Docker Desktop desde el menú de inicio. El ícono de la ballena en la barra de tareas indica que está corriendo.
+6. Verificar la instalación abriendo una terminal (CMD o PowerShell) y ejecutando:
+   ```bash
+   docker --version
+   ```
+
+> **Nota**: Docker Desktop requiere Windows 10 (versión 1903 o superior) o Windows 11.
+
+#### MySQL Workbench
+
+MySQL Workbench es el cliente gráfico oficial para administrar bases de datos MySQL.
+
+1. Descargar el instalador desde [dev.mysql.com/downloads/workbench](https://dev.mysql.com/downloads/workbench/).
+2. En la página de descarga, hacer clic en **"No thanks, just start my download"** para omitir el registro.
+3. Ejecutar el instalador `.msi` y seguir los pasos con las opciones por defecto.
+4. Al abrir MySQL Workbench por primera vez, la pantalla principal mostrará las conexiones disponibles. Se configurará una nueva conexión luego de levantar el contenedor Docker.
+
 ### Motor vs. Cliente
 
 Una base de datos tiene dos componentes:
