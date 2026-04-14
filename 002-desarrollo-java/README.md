@@ -79,6 +79,29 @@ MySQL Workbench es el cliente gráfico oficial para administrar bases de datos M
 3. Ejecutar el instalador `.msi` y seguir los pasos con las opciones por defecto.
 4. Al abrir MySQL Workbench por primera vez, la pantalla principal mostrará las conexiones disponibles. Se configurará una nueva conexión luego de levantar el contenedor Docker.
 
+### Alternativa: Laragon (sin Docker)
+
+Si Docker Desktop no puede instalarse en la máquina (por restricciones de permisos, versión de Windows, o recursos limitados), **Laragon** es una alternativa más sencilla. Es un entorno de desarrollo local para Windows que incluye MySQL preconfigurado, sin necesidad de virtualización.
+
+1. Descargar **Laragon Full** desde [laragon.org/download](https://laragon.org/download/).
+2. Ejecutar el instalador y seguir los pasos con las opciones por defecto.
+3. Abrir Laragon y hacer clic en **"Iniciar todo"** (Start All). Esto levanta el servidor MySQL en el puerto `3306`.
+4. Para administrar la base de datos, Laragon incluye **HeidiSQL** (cliente similar a MySQL Workbench). Se accede desde el menú **Base de datos → HeidiSQL**.
+
+Los datos de conexión por defecto de Laragon son:
+
+```
+hostname: 127.0.0.1
+port:     3306
+username: root
+password: (vacío)
+```
+
+> **Importante**: al usar Laragon en lugar de Docker, en el archivo `hibernate.cfg.xml` del proyecto se debe dejar la contraseña vacía:
+> ```xml
+> <property name="hibernate.connection.password"></property>
+> ```
+
 ### Motor vs. Cliente
 
 Una base de datos tiene dos componentes:
