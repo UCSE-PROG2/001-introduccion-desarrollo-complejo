@@ -124,6 +124,23 @@ Una base de datos tiene dos componentes:
 - **Motor**: administra las tablas y los datos (servidor)
 - **Cliente**: interfaz para administrar la base de datos (ej: MySQL Workbench)
 
+```mermaid
+flowchart LR
+    subgraph Clientes
+        A["🖥️ MySQL Workbench\n(administración visual)"]
+        B["☕ Aplicación Java\n(tu código)"]
+    end
+
+    subgraph Servidor
+        C[("🗄️ Motor MySQL\nadministra tablas y datos")]
+    end
+
+    A -- "consultas SQL\npuerto 3306" --> C
+    B -- "JDBC / Hibernate\npuerto 3306" --> C
+```
+
+> El motor corre en segundo plano (dentro de Docker o Laragon) y los clientes se conectan a él a través del puerto `3306`. Puede haber múltiples clientes conectados al mismo tiempo.
+
 ### Levantar MySQL con Docker
 
 En lugar de instalar MySQL en la máquina, se usa un contenedor Docker:
