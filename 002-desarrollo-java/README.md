@@ -16,7 +16,15 @@
 
 ## 1. Introducción
 
-El desarrollo de aplicaciones con bases de datos relacionales implica tres grandes pasos:
+Las aplicaciones empresariales suelen organizarse en **capas**: una capa de presentación (interfaz de usuario), una capa de negocio (lógica de la aplicación) y una **capa de datos** (acceso y persistencia de información). En esta unidad nos enfocamos en esa última capa: cómo conectar una aplicación Java a una base de datos relacional y cómo manipular los datos desde el código.
+
+### El rol del diseño de la base de datos
+
+En materias como **Bases de Datos I y II** se estudia cómo modelar y diseñar una base de datos: definir tablas, columnas, tipos de datos, claves primarias, claves foráneas, relaciones y restricciones. Ese diseño es la base sobre la que trabajamos acá.
+
+**Desde la perspectiva del desarrollador**, la pregunta no es cómo diseñar el esquema sino cómo conectar la aplicación a ese esquema ya definido, cómo representar las tablas como objetos Java, y cómo realizar operaciones de lectura y escritura de forma eficiente y mantenible.
+
+### Los tres pasos del acceso a datos
 
 | Paso | Descripción |
 |------|-------------|
@@ -27,6 +35,19 @@ El desarrollo de aplicaciones con bases de datos relacionales implica tres grand
 ---
 
 ## 2. Diseño y levantamiento de la base de datos
+
+### ¿Qué es Docker y para qué sirve?
+
+**Docker** es una plataforma que permite empaquetar y ejecutar aplicaciones dentro de **contenedores**: entornos aislados que incluyen todo lo que esa aplicación necesita para funcionar (binarios, librerías, configuración), sin depender del sistema operativo del host.
+
+A diferencia de una máquina virtual, un contenedor no virtualiza el hardware: comparte el kernel del sistema operativo y arranca en segundos. Esto lo hace ideal para levantar servicios como bases de datos en el entorno de desarrollo sin necesidad de instalarlos directamente en la máquina.
+
+El flujo básico es:
+1. Se descarga una **imagen** (plantilla del servicio, por ej. `mysql`)
+2. Docker crea un **contenedor** a partir de esa imagen
+3. El contenedor corre de forma aislada, exponiendo los puertos que se le indiquen
+
+En el contexto de esta unidad, Docker permite tener MySQL funcionando en minutos, sin instalación manual, en cualquier sistema operativo.
 
 ### Motor vs. Cliente
 
