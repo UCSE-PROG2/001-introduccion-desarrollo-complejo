@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'mysql:mysql-connector-java:8.0.28'
+    implementation 'org.hibernate:hibernate-core:5.5.7.Final'
+    implementation 'org.hibernate:hibernate-entitymanager:5.5.7.Final'
+}
+
+application {
+    mainClass = 'org.example.Main'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
