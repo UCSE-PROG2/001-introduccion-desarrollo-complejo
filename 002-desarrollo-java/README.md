@@ -97,9 +97,25 @@ username: root
 password: (vacío)
 ```
 
-> **Importante**: al usar Laragon en lugar de Docker, en el archivo `hibernate.cfg.xml` del proyecto se debe dejar la contraseña vacía:
+#### Establecer una contraseña para root
+
+Por seguridad, se recomienda asignar una contraseña al usuario `root` antes de usar la base de datos. Para eso:
+
+1. Con Laragon corriendo, abrir **HeidiSQL** desde el menú **Base de datos → HeidiSQL**.
+2. Conectarse con `root` y contraseña vacía.
+3. En la barra superior, ir a **Herramientas → Ejecutar SQL** (o abrir una pestaña de consulta con `Ctrl+T`).
+4. Ejecutar el siguiente comando reemplazando `nueva_contraseña` por la contraseña elegida:
+
+```sql
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'nueva_contraseña';
+FLUSH PRIVILEGES;
+```
+
+5. Cerrar HeidiSQL y volver a conectarse usando la nueva contraseña para verificar que funciona.
+
+> **Importante**: una vez asignada la contraseña, actualizar el archivo `hibernate.cfg.xml` del proyecto con el mismo valor:
 > ```xml
-> <property name="hibernate.connection.password"></property>
+> <property name="hibernate.connection.password">nueva_contraseña</property>
 > ```
 
 ### Motor vs. Cliente
