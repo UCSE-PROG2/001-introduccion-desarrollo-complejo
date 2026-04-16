@@ -13,11 +13,10 @@
 2. [Diseño y levantamiento de la base de datos](#2-diseño-y-levantamiento-de-la-base-de-datos)
 3. [Conexión directa con JDBC](#3-conexión-directa-con-jdbc)
 4. [ORM - Object Relational Mapping](#4-orm---object-relational-mapping)
-5. [JPA - Java Persistence API](#5-jpa---java-persistence-api)
-6. [Hibernate](#6-hibernate)
-7. [Relaciones entre entidades](#7-relaciones-entre-entidades)
-8. [Pruebas unitarias con H2](#8-pruebas-unitarias-con-h2)
-9. [Conceptos avanzados clave](#9-conceptos-avanzados-clave)
+5. [JPA y Hibernate](#5-jpa-y-hibernate)
+6. [Relaciones entre entidades](#6-relaciones-entre-entidades)
+7. [Pruebas unitarias con H2](#7-pruebas-unitarias-con-h2)
+8. [Conceptos avanzados clave](#8-conceptos-avanzados-clave)
 
 ---
 
@@ -394,43 +393,22 @@ Tabla: users                      Entidad: User.java
 
 ---
 
-## 5. JPA - Java Persistence API
+## 5. JPA y Hibernate
 
-**JPA** es una *especificación* de Java que define cómo mapear objetos a bases de datos relacionales. No es una implementación, sino un estándar que los ORM como Hibernate implementan.
+**JPA** (Java Persistence API) es una *especificación* de Java: define las interfaces, anotaciones y reglas para mapear objetos a bases de datos relacionales, pero no es una implementación.
 
-JPA define interfaces y anotaciones para mapear entidades a tablas mediante un archivo `persistence.xml`.
+**Hibernate** es la implementación de JPA más popular. En la práctica: se programa usando las anotaciones JPA (`@Entity`, `@Id`, `@Column`...) y Hibernate se encarga de traducirlas al SQL específico del motor de BD configurado.
 
-### Conceptos clave de JPA
+### Anotaciones JPA
 
-| Concepto | Anotación | Descripción |
-|----------|-----------|-------------|
-| **Entidad** | `@Entity` | Clase que representa una tabla. Cada instancia = una fila |
-| **Identificador** | `@Id` | Campo que identifica de forma única cada instancia |
-| **Columna** | `@Column` | Mapea un atributo a una columna específica |
-| **Relaciones** | `@OneToMany`, `@ManyToOne`, etc. | Define relaciones entre entidades |
-| **EntityManager** | — | Clase principal para interactuar con la BD (insertar, buscar, actualizar, eliminar) |
-| **Transacciones** | `@Transactional` | Garantizan la integridad de los datos |
-
-### Ejemplo: Entidad JPA
-
-```java
-@Entity
-@Table(name = "users")
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "name")
-    private String name;
-
-    @Column(name = "active")
-    private boolean active;
-
-    // Getters y setters
-}
-```
+| Anotación | Descripción |
+|-----------|-------------|
+| `@Entity` | Marca la clase como entidad: Hibernate la mapea a una tabla |
+| `@Table(name="...")` | Especifica el nombre de la tabla (opcional si coincide con la clase) |
+| `@Id` | Campo que es clave primaria |
+| `@GeneratedValue` | Delega la generación del ID a la base de datos |
+| `@Column(name="...")` | Mapea el atributo a una columna específica |
+| `@OneToMany`, `@ManyToOne`, etc. | Define relaciones entre entidades |
 
 ### Estrategias de @GeneratedValue
 
@@ -440,92 +418,6 @@ public class User {
 | `SEQUENCE` | Usa secuencias de la BD | PostgreSQL, Oracle — recomendada por rendimiento |
 | `AUTO` | Hibernate decide según el dialecto | Portable, pero el comportamiento varía por BD |
 | `TABLE` | Usa una tabla auxiliar para IDs | Evitar — el peor rendimiento (locking) |
-
-### Ejemplo: persistence.xml
-
-```xml
-<persistence-unit name="myPersistenceUnit" transaction-type="RESOURCE_LOCAL">
-
-    <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
-    <class>com.example.User</class>
-
-    <properties>
-        <property name="javax.persistence.jdbc.driver"
-                  value="com.mysql.cj.jdbc.Driver"/>
-        <property name="javax.persistence.jdbc.url"
-                  value="jdbc:mysql://localhost:3306/myDatabase"/>
-        <property name="javax.persistence.jdbc.user"     value="root"/>
-        <property name="javax.persistence.jdbc.password" value="password"/>
-        <property name="hibernate.dialect"
-                  value="org.hibernate.dialect.MySQL5Dialect"/>
-        <property name="hibernate.hbm2ddl.auto"          value="update"/>
-    </properties>
-
-</persistence-unit>
-```
-
-### Opción hibernate.hbm2ddl.auto
-
-| Valor | Comportamiento | Cuándo usar |
-|-------|---------------|-------------|
-| `create` | Borra el esquema existente y lo recrea | Desarrollo desde cero |
-| `create-drop` | Crea al iniciar y borra al cerrar la `SessionFactory` | Tests unitarios (BD limpia en cada ejecución) |
-| `update` | Agrega tablas/columnas nuevas, no borra datos existentes | Desarrollo activo |
-| `validate` | Valida que el esquema coincida con las entidades (error si no) | Verificación en integración |
-| `none` | No hace nada | Producción |
-
-> **Producción**: nunca usar `create`, `update` ni `create-drop` en producción. Para gestionar el esquema en ambientes productivos se usan herramientas de migración como **Flyway** o **Liquibase**.
-
-### Ejemplo: EntityManager
-
-```java
-// Configurar el EntityManagerFactory
-EntityManagerFactory emf =
-    Persistence.createEntityManagerFactory("myPersistenceUnit");
-
-// Crear el EntityManager
-EntityManager em = emf.createEntityManager();
-```
-
-### Operaciones CRUD con EntityManager
-
-```java
-// INSERTAR
-User user = new User();
-user.setName("John");
-user.setActive(true);
-
-em.getTransaction().begin();
-em.persist(user);
-em.getTransaction().commit();
-
-// ACTUALIZAR
-User userToUpdate = em.find(User.class, 1L);
-userToUpdate.setName("Jane");
-
-em.getTransaction().begin();
-em.merge(userToUpdate);
-em.getTransaction().commit();
-
-// CONSULTAR (JPQL)
-TypedQuery<User> query = em.createQuery(
-    "SELECT u FROM User u WHERE u.active = :active", User.class
-);
-query.setParameter("active", true);
-List<User> activeUsers = query.getResultList();
-
-// ELIMINAR
-User userToDelete = em.find(User.class, 1L);
-em.getTransaction().begin();
-em.remove(userToDelete);
-em.getTransaction().commit();
-```
-
----
-
-## 6. Hibernate
-
-**Hibernate** es la implementación de JPA más popular para Java. Es un framework ORM que permite mapear objetos a tablas de forma transparente, trabajando con sesiones en lugar de SQL directo.
 
 ### Ventajas de Hibernate sobre JDBC puro
 
@@ -538,38 +430,46 @@ em.getTransaction().commit();
 
 ```groovy
 dependencies {
-    implementation 'mysql:mysql-connector-java:8.0.26'
-    implementation 'org.hibernate:hibernate-core:5.5.7.Final'
-    implementation 'org.hibernate:hibernate-entitymanager:5.5.7.Final'
+    implementation 'mysql:mysql-connector-java:8.0.28'
+    implementation 'org.hibernate:hibernate-core:5.6.15.Final'
 }
 ```
 
 > **Nota sobre versiones**: Hibernate 6.x reemplazó el paquete `javax.persistence` por `jakarta.persistence`. Los ejemplos de esta unidad usan Hibernate 5.x con `javax.persistence`.
 
-### 6.1 Definir una Entidad
+### 5.1 Definir una Entidad
 
 ```java
 import javax.persistence.*;
 
 @Entity
-@Table(name = "alumnos")
-public class Alumno {
+@Table(name = "users")
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "nombre")
-    private String nombre;
+    @Column(name = "name", nullable = false, length = 45)
+    private String name;
 
-    public Integer getId()              { return id; }
-    public void setId(Integer id)       { this.id = id; }
-    public String getNombre()           { return nombre; }
-    public void setNombre(String nombre){ this.nombre = nombre; }
+    @Column(name = "active", nullable = false)
+    private boolean active;
+
+    // Constructor vacío obligatorio: Hibernate lo necesita para crear instancias
+    // al leer filas de la BD mediante reflexión.
+    public User() {}
+
+    public User(String name, boolean active) {
+        this.name   = name;
+        this.active = active;
+    }
+
+    // Getters y setters
 }
 ```
 
-### 6.2 Configuración: hibernate.cfg.xml
+### 5.2 Configuración: hibernate.cfg.xml
 
 Se crea dentro de la carpeta `resources/`:
 
@@ -582,101 +482,109 @@ Se crea dentro de la carpeta `resources/`:
 <hibernate-configuration>
     <session-factory>
 
-        <!-- Conexión a la base de datos -->
-        <property name="hibernate.connection.driver_class">
-            com.mysql.cj.jdbc.Driver
-        </property>
-        <property name="hibernate.connection.url">
-            jdbc:mysql://localhost:3306/usuarios?serverTimezone=UTC
-        </property>
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/ejemplo_orm?serverTimezone=UTC</property>
         <property name="hibernate.connection.username">root</property>
         <property name="hibernate.connection.password">123456</property>
 
-        <!-- Dialecto: le indica a Hibernate qué SQL generar -->
-        <property name="hibernate.dialect">
-            org.hibernate.dialect.MySQL8Dialect
-        </property>
+        <!-- El dialecto indica qué "sabor" de SQL debe generar Hibernate según el motor -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL8Dialect</property>
 
-        <!-- Autodetección de entidades -->
-        <property name="hibernate.archive.autodetection">class</property>
+        <!-- Controla qué hace Hibernate con las tablas al iniciar:
+             create-drop → recrea las tablas al arrancar y las elimina al cerrar (demos)
+             create      → recrea las tablas al arrancar (borra datos previos)
+             update      → agrega columnas nuevas sin borrar datos existentes
+             validate    → verifica que las tablas coincidan con las entidades
+             none        → no toca el esquema (producción) -->
+        <property name="hibernate.hbm2ddl.auto">create-drop</property>
 
-        <!-- Caché desactivado (recomendado al aprender) -->
+        <!-- Imprime el SQL generado en consola, útil para aprender y depurar -->
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+
         <property name="hibernate.cache.use_second_level_cache">false</property>
         <property name="hibernate.cache.use_query_cache">false</property>
 
-        <!-- Registrar la entidad -->
-        <mapping class="org.example.model.Alumno"/>
+        <!-- Cada clase @Entity debe registrarse aquí -->
+        <mapping class="org.example.model.User"/>
 
     </session-factory>
 </hibernate-configuration>
 ```
 
-### 6.3 HibernateUtil: gestión de la SessionFactory
+> **Producción**: nunca usar `create`, `update` ni `create-drop` en producción. Para gestionar el esquema en ambientes productivos se usan herramientas de migración como **Flyway** o **Liquibase**.
+
+### 5.3 HibernateUtil: gestión de la SessionFactory
 
 La `SessionFactory` es costosa de crear (lee la configuración, establece el pool de conexiones), por lo que se instancia **una sola vez** usando el patrón Singleton:
 
 ```java
-package org.example.utils;
-
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
-
 public class HibernateUtil {
 
     private static final SessionFactory sessionFactory;
 
+    // El bloque static{} se ejecuta una única vez cuando la JVM carga esta clase.
     static {
         try {
-            Configuration configuration = new Configuration().configure();
-            sessionFactory = configuration.buildSessionFactory();
+            sessionFactory = new Configuration().configure().buildSessionFactory();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize Hibernate Util", e);
+            throw new RuntimeException("Error al inicializar Hibernate", e);
         }
     }
 
+    // Una Session representa una "conversación" con la BD.
+    // Se abre una por operación y se cierra al terminar.
     public static Session getSession() {
         return sessionFactory.openSession();
+    }
+
+    public static void shutdown() {
+        sessionFactory.close();
     }
 }
 ```
 
-### 6.4 DAO: operaciones CRUD
+### 5.4 DAO: operaciones CRUD
 
 ```java
-public class AlumnoDAO {
+public class UserDAO {
 
-    // GUARDAR
-    public void save(Alumno alumno) {
+    public void save(User user) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
-            session.save(alumno);
+            session.persist(user);        // INSERT
             session.getTransaction().commit();
         }
     }
 
-    // ACTUALIZAR
-    public void update(Alumno alumno) {
+    public void update(User user) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
-            session.update(alumno);
+            session.merge(user);          // UPDATE
             session.getTransaction().commit();
         }
     }
 
-    // ELIMINAR
-    public void delete(Alumno alumno) {
+    public void delete(Integer id) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
-            session.delete(alumno);
+            User user = session.get(User.class, id);
+            if (user != null) session.delete(user);  // DELETE
             session.getTransaction().commit();
         }
     }
 
-    // BUSCAR POR ID
-    public Alumno findById(Integer id) {
+    public User findById(Integer id) {
         try (Session session = HibernateUtil.getSession()) {
-            return session.get(Alumno.class, id);
+            return session.get(User.class, id);       // SELECT WHERE id = ?
+        }
+    }
+
+    public List<User> findAll() {
+        try (Session session = HibernateUtil.getSession()) {
+            // JPQL: opera sobre la clase Java User, no directamente sobre la tabla.
+            // Hibernate traduce "FROM User" a "SELECT * FROM users".
+            return session.createQuery("FROM User", User.class).getResultList();
         }
     }
 }
@@ -692,20 +600,19 @@ public class AlumnoDAO {
 
 > En proyectos nuevos se prefiere `persist()` y `merge()` por ser el estándar JPA.
 
-### 6.5 Consultas con CriteriaBuilder
+### 5.5 Consultas con CriteriaBuilder
 
 `CriteriaBuilder` permite construir consultas tipadas sin escribir SQL ni JPQL en texto:
 
 ```java
-public List<Alumno> findAll(String nombre) {
+public List<User> findAll(String nombre) {
     try (Session session = HibernateUtil.getSession()) {
 
         CriteriaBuilder builder = session.getCriteriaBuilder();
-        CriteriaQuery<Alumno> query = builder.createQuery(Alumno.class);
-        Root<Alumno> root = query.from(Alumno.class);
+        CriteriaQuery<User> query = builder.createQuery(User.class);
+        Root<User> root = query.from(User.class);
 
-        // Filtro: nombre contiene el texto buscado
-        Predicate likePredicate = builder.like(root.get("nombre"), "%" + nombre + "%");
+        Predicate likePredicate = builder.like(root.get("name"), "%" + nombre + "%");
         query.where(likePredicate);
         query.select(root);
 
@@ -721,7 +628,7 @@ public List<Alumno> findAll(String nombre) {
 
 ---
 
-## 7. Relaciones entre entidades
+## 6. Relaciones entre entidades
 
 Las bases de datos relacionales se caracterizan por tener tablas que se relacionan entre sí. Estas relaciones deben definirse también en el ORM.
 
@@ -751,7 +658,7 @@ CREATE TABLE Alumnos (
 );
 ```
 
-### 7.1 Relación 1 a 1 (@OneToOne)
+### 6.1 Relación 1 a 1 (@OneToOne)
 
 ```java
 @Entity
@@ -780,7 +687,7 @@ public class Address {
 **¿Qué hace `mappedBy`?**
 Indica el **lado inverso** de la relación. La entidad propietaria es la que contiene la clave foránea en la tabla. `mappedBy` le dice a Hibernate que busque la columna en la tabla de la entidad propietaria, en lugar de crear una nueva columna.
 
-### 7.2 Relación 1 a N (@OneToMany / @ManyToOne)
+### 6.2 Relación 1 a N (@OneToMany / @ManyToOne)
 
 ```java
 @Entity
@@ -806,7 +713,7 @@ public class Employee {
 }
 ```
 
-### 7.3 Relación N a N (@ManyToMany)
+### 6.3 Relación N a N (@ManyToMany)
 
 Requiere una **tabla intermedia** para almacenar las asociaciones:
 
@@ -843,7 +750,7 @@ public class Course {
 
 La tabla `student_course` tiene dos columnas (`student_id` y `course_id`) que Hibernate gestiona automáticamente.
 
-### 7.4 @JoinColumn
+### 6.4 @JoinColumn
 
 `@JoinColumn` especifica el **nombre de la columna de clave foránea** en la tabla de la entidad secundaria:
 
@@ -871,7 +778,7 @@ public class EntidadSecundaria {
 
 ---
 
-## 8. Pruebas unitarias con H2
+## 7. Pruebas unitarias con H2
 
 ### ¿Por qué H2?
 
@@ -948,7 +855,7 @@ public class UserDAOTest {
 
 ---
 
-## 9. Conceptos avanzados clave
+## 8. Conceptos avanzados clave
 
 ### FetchType: LAZY vs EAGER
 
