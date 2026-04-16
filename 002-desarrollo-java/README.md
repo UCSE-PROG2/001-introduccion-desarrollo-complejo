@@ -431,11 +431,11 @@ Tabla: users                      Entidad: User.java
 ```groovy
 dependencies {
     implementation 'mysql:mysql-connector-java:8.0.28'
-    implementation 'org.hibernate:hibernate-core:6.6.4.Final'
+    implementation 'org.hibernate:hibernate-core:7.3.1.Final'
 }
 ```
 
-> **Nota sobre versiones**: Hibernate 6.x (actual) usa el paquete `jakarta.persistence`. La versión anterior (5.x) usaba `javax.persistence` — si encontrás ejemplos en internet con ese import, están desactualizados.
+> **Nota sobre versiones**: Hibernate 7.x (actual, requiere Java 17+) usa `jakarta.persistence`. Las versiones anteriores usaban `javax.persistence` — si encontrás ejemplos en internet con ese import, están desactualizados.
 
 ### 5.1 Definir una Entidad
 
@@ -487,8 +487,8 @@ Se crea dentro de la carpeta `resources/`:
         <property name="hibernate.connection.username">root</property>
         <property name="hibernate.connection.password">123456</property>
 
-        <!-- El dialecto indica qué "sabor" de SQL debe generar Hibernate según el motor -->
-        <property name="hibernate.dialect">org.hibernate.dialect.MySQL8Dialect</property>
+        <!-- MySQLDialect autodetecta la versión del servidor (MySQL8Dialect fue eliminado en H7) -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
 
         <!-- Controla qué hace Hibernate con las tablas al iniciar:
              create-drop → recrea las tablas al arrancar y las elimina al cerrar (demos)

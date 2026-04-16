@@ -29,7 +29,8 @@
         <!-- El dialecto le indica a Hibernate qué "sabor" de SQL debe generar.
              Cada motor de BD tiene variaciones en su sintaxis (tipos de datos,
              paginación, funciones). MySQL8Dialect genera SQL optimizado para MySQL 8. -->
-        <property name="hibernate.dialect">org.hibernate.dialect.MySQL8Dialect</property>
+        <!-- MySQLDialect autodetecta la versión del servidor; MySQL8Dialect fue eliminado en H7 -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
 
         <!-- ── Gestión del esquema ────────────────────────────────────────── -->
 
