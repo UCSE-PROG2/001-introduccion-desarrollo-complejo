@@ -62,7 +62,7 @@ public class UserDAO {
             // y luego lo pasamos a delete().
             User user = session.get(User.class, id);
             if (user != null) {
-                session.delete(user);
+                session.remove(user);
             }
 
             session.getTransaction().commit();

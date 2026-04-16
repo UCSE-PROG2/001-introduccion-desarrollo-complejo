@@ -431,16 +431,16 @@ Tabla: users                      Entidad: User.java
 ```groovy
 dependencies {
     implementation 'mysql:mysql-connector-java:8.0.28'
-    implementation 'org.hibernate:hibernate-core:5.6.15.Final'
+    implementation 'org.hibernate:hibernate-core:6.6.4.Final'
 }
 ```
 
-> **Nota sobre versiones**: Hibernate 6.x reemplazó el paquete `javax.persistence` por `jakarta.persistence`. Los ejemplos de esta unidad usan Hibernate 5.x con `javax.persistence`.
+> **Nota sobre versiones**: Hibernate 6.x (actual) usa el paquete `jakarta.persistence`. La versión anterior (5.x) usaba `javax.persistence` — si encontrás ejemplos en internet con ese import, están desactualizados.
 
 ### 5.1 Definir una Entidad
 
 ```java
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "users")
@@ -569,7 +569,7 @@ public class UserDAO {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
             User user = session.get(User.class, id);
-            if (user != null) session.delete(user);  // DELETE
+            if (user != null) session.remove(user);  // DELETE
             session.getTransaction().commit();
         }
     }
@@ -590,15 +590,16 @@ public class UserDAO {
 }
 ```
 
-### Diferencias entre save(), persist() y merge()
+### Diferencias entre persist(), merge() y remove()
 
-| Método | Estado del objeto | Retorna | Requiere transacción activa |
-|--------|-------------------|---------|----------------------------|
-| `save()` | Nuevo (transient) | ID generado | No obligatorio |
-| `persist()` | Nuevo (transient) | void | Sí |
-| `merge()` | Detached (modificado fuera de sesión) | Nueva instancia gestionada | Sí |
+| Método | Operación | Estado del objeto | Requiere transacción activa |
+|--------|-----------|-------------------|-----------------------------|
+| `persist(obj)` | INSERT | Nuevo (sin id) | Sí |
+| `merge(obj)` | UPDATE | Modificado fuera de sesión | Sí |
+| `remove(obj)` | DELETE | Gestionado por la sesión actual | Sí |
+| `get(Clase, id)` | SELECT | — (retorna el objeto o null) | No |
 
-> En proyectos nuevos se prefiere `persist()` y `merge()` por ser el estándar JPA.
+> Hibernate 6 eliminó los métodos `save()`, `update()` y `delete()` heredados de versiones anteriores. Los métodos correctos son `persist()`, `merge()` y `remove()`, que son el estándar JPA.
 
 ### 5.5 Consultas con CriteriaBuilder
 

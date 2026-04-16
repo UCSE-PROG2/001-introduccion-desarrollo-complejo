@@ -20,7 +20,7 @@ dependencies {
 
     // Hibernate Core: incluye el ORM y la implementación de JPA (javax.persistence).
     // La versión 5.x usa el paquete javax.persistence (anterior al estándar Jakarta).
-    implementation 'org.hibernate:hibernate-core:5.6.15.Final'
+    implementation 'org.hibernate:hibernate-core:6.6.4.Final'
 }
 
 // Clase con el método main() que Gradle usa al ejecutar "./gradlew run".
