@@ -1,5 +1,12 @@
 # Unidad 2 - Desarrollo de aplicaciones con bases de datos relacionales
 
+## Proyectos de ejemplo
+
+| Carpeta | Descripción |
+|---------|-------------|
+| [`002b-ejemplo-java-sql`](002b-ejemplo-java-sql/) | Conexión directa con JDBC puro (sin ORM) |
+| [`002b-ejemplo-orm`](002b-ejemplo-orm/) | Implementación completa con Hibernate (capas datos, lógica y presentación) |
+
 ## Índice
 
 1. [Introducción](#1-introducción)
@@ -339,6 +346,51 @@ utils/
 ```
 
 **Beneficio principal**: si se cambia el ORM o la BD, solo se modifica el DAO, no el resto de la aplicación.
+
+### Relación entre tabla, entidad y DAO
+
+El siguiente diagrama muestra cómo una tabla de la base de datos se conecta con las distintas capas de la aplicación Java:
+
+```
+BASE DE DATOS                     CAPA DE DATOS (Java)
+─────────────────────────────     ─────────────────────────────────────────────────────
+
+Tabla: users                      Entidad: User.java
+┌────────────────────────────┐    ┌──────────────────────────────────────────────────┐
+│ id     INT  PK AUTO_INC    │◄──►│ @Id @GeneratedValue  private Integer id;         │
+│ name   VARCHAR(45) NOT NULL│◄──►│ @Column("name")      private String name;        │
+│ active BIT         NOT NULL│◄──►│ @Column("active")    private boolean active;     │
+└────────────────────────────┘    └──────────────────────────────────────────────────┘
+         │                                          │
+         │  Hibernate traduce objetos ↔ filas       │
+         │                                          ▼
+         │                        DAO: UserDAO.java
+         │                        ┌──────────────────────────────────────────────────┐
+         │  INSERT INTO users ◄───│ save(User u)      → session.persist(u)           │
+         │  SELECT * FROM users◄──│ findAll()         → session.createQuery(...)     │
+         │  SELECT … WHERE id ◄───│ findById(id)      → session.get(User.class, id)  │
+         │  UPDATE users SET  ◄───│ update(User u)    → session.merge(u)             │
+         │  DELETE FROM users ◄───│ delete(id)        → session.delete(...)          │
+         └────────────────────────┘                                                  │
+                                                                                     │
+                                  CAPA DE LÓGICA                                     │
+                                  Service: UserService.java                          │
+                                  ┌──────────────────────────────────────────────────┘
+                                  │  registrar(name, active)  → valida + llama DAO
+                                  │  desactivar(id)           → busca, modifica, guarda
+                                  │  eliminar(id)             → delega al DAO
+                                  └──────────────────────────────────────────────────
+
+                                  CAPA DE PRESENTACIÓN
+                                  Main.java
+                                  ┌──────────────────────────────────────────────────┐
+                                  │  service.registrar(...)                          │
+                                  │  service.listarTodos().forEach(sout)             │
+                                  │  service.desactivar(1)                           │
+                                  └──────────────────────────────────────────────────┘
+```
+
+> Cada fila de la tabla `users` corresponde a una instancia de `User`. Hibernate se encarga de convertir automáticamente entre ambas representaciones. El DAO expone métodos con nombres de negocio (`save`, `findAll`) en lugar de SQL, y el Service agrega validaciones antes de llamar al DAO.
 
 ---
 

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+    "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+    "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<!--
+    Archivo de configuración de Hibernate.
+    Se ubica en src/main/resources/ para que Gradle lo incluya en el classpath.
+    HibernateUtil lo lee automáticamente al llamar a Configuration().configure().
+-->
+<hibernate-configuration>
+    <session-factory>
+
+        <!-- ── Conexión a la base de datos ───────────────────────────────── -->
+
+        <!-- Driver JDBC de MySQL. Hibernate lo usa internamente para conectarse. -->
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+
+        <!-- URL de conexión. Formato: jdbc:mysql://host:puerto/nombre_schema
+             El schema "ejemplo_orm" debe existir en MySQL antes de ejecutar.
+             serverTimezone=UTC evita advertencias de zona horaria. -->
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/ejemplo_orm?serverTimezone=UTC</property>
+
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">123456</property>
+
+        <!-- ── Dialecto ───────────────────────────────────────────────────── -->
+
+        <!-- El dialecto le indica a Hibernate qué "sabor" de SQL debe generar.
+             Cada motor de BD tiene variaciones en su sintaxis (tipos de datos,
+             paginación, funciones). MySQL8Dialect genera SQL optimizado para MySQL 8. -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQL8Dialect</property>
+
+        <!-- ── Gestión del esquema ────────────────────────────────────────── -->
+
+        <!-- hbm2ddl.auto controla qué hace Hibernate con las tablas al iniciar:
+               create-drop → crea las tablas al arrancar y las elimina al cerrar.
+                             Ideal para demostraciones: siempre arranca limpio.
+               create      → recrea las tablas al arrancar (borra datos previos).
+               update      → agrega columnas nuevas, no borra datos existentes.
+               validate    → verifica que las tablas coincidan con las entidades.
+               none        → no toca el esquema (usar en producción). -->
+        <property name="hibernate.hbm2ddl.auto">create-drop</property>
+
+        <!-- ── Logging de SQL ─────────────────────────────────────────────── -->
+
+        <!-- show_sql=true imprime en consola cada sentencia SQL que ejecuta Hibernate.
+             Muy útil para entender qué consultas genera y detectar problemas. -->
+        <property name="hibernate.show_sql">true</property>
+
+        <!-- format_sql=true muestra el SQL con indentación, más fácil de leer. -->
+        <property name="hibernate.format_sql">true</property>
+
+        <!-- ── Caché ──────────────────────────────────────────────────────── -->
+
+        <!-- Desactivamos la caché de segundo nivel para simplificar.
+             En producción puede habilitarse para reducir consultas repetidas. -->
+        <property name="hibernate.cache.use_second_level_cache">false</property>
+        <property name="hibernate.cache.use_query_cache">false</property>
+
+        <!-- ── Entidades registradas ─────────────────────────────────────── -->
+
+        <!-- Cada clase marcada con @Entity debe registrarse aquí.
+             Hibernate la analiza para saber a qué tabla mapearla. -->
+        <mapping class="org.example.model.User"/>
+
+    </session-factory>
+</hibernate-configuration>

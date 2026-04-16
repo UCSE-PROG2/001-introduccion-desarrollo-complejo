@@ -1,0 +1,34 @@
+// ── Plugins ───────────────────────────────────────────────────────────────────
+// 'java'        → habilita compilación, test y empaquetado de proyectos Java.
+// 'application' → agrega la tarea "run" para ejecutar la clase main directamente.
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group   = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    // mavenCentral es el repositorio público donde Gradle busca las dependencias.
+    mavenCentral()
+}
+
+dependencies {
+    // Driver JDBC de MySQL: permite que Java (y Hibernate) se conecten a MySQL.
+    implementation 'mysql:mysql-connector-java:8.0.28'
+
+    // Hibernate Core: incluye el ORM y la implementación de JPA (javax.persistence).
+    // La versión 5.x usa el paquete javax.persistence (anterior al estándar Jakarta).
+    implementation 'org.hibernate:hibernate-core:5.6.15.Final'
+}
+
+// Clase con el método main() que Gradle usa al ejecutar "./gradlew run".
+application {
+    mainClass = 'org.example.Main'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
