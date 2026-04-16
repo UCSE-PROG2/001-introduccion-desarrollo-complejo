@@ -1,7 +1,7 @@
 package org.example;
 
+import org.example.data.HibernateUtil;
 import org.example.service.UserService;
-import org.example.utils.HibernateUtil;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CAPA DE PRESENTACIÓN — Punto de entrada
@@ -11,16 +11,16 @@ import org.example.utils.HibernateUtil;
 //
 // Su única responsabilidad es mostrar información al usuario (en este caso
 // por consola) e invocar la capa de lógica (UserService).
-// No accede al DAO ni a Hibernate directamente.
+// No accede al Repository ni a Hibernate directamente.
 //
 // Flujo de llamadas:
-//   Main → UserService → UserDAO → Hibernate → MySQL
+//   Main → UserService → Repository → Hibernate → MySQL
 // ─────────────────────────────────────────────────────────────────────────────
 public class Main {
 
     public static void main(String[] args) {
 
-        // La capa de presentación solo conoce al Service, nunca al DAO.
+        // La capa de presentación solo conoce al Service, nunca al Repository.
         UserService service = new UserService();
 
         // INSERT: registrar inserta tres usuarios en la tabla users.

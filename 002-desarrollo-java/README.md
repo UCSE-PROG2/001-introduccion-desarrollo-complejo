@@ -329,24 +329,25 @@ Un ORM proporciona una **capa de abstracción** entre la aplicación y la BD, ma
 | **Productividad** | Automatiza el mapeo objeto-tabla |
 | **Mantenimiento** | Cambios en el modelo se reflejan sin modificar SQL manualmente |
 
-### Patrón DAO (Data Access Object)
+### Patrón Repository
 
-El patrón **DAO** es la forma estándar de organizar el acceso a datos en una aplicación con ORM. Separa la lógica de negocio del acceso a la base de datos.
+El patrón **Repository** organiza el acceso a datos agrupando todas las consultas a la base de datos en una sola clase. El resto de la aplicación (Service, Main) no conoce Hibernate ni SQL: solo llama a los métodos del Repository.
 
-**Estructura típica:**
+**Estructura del proyecto de ejemplo:**
 
 ```
-model/
-  Alumno.java         ← Entidad JPA (mapea a la tabla)
-dao/
-  AlumnoDAO.java      ← Métodos CRUD para Alumno
-utils/
-  HibernateUtil.java  ← Configuración de la sesión
+data/
+  User.java           ← Entidad JPA (una clase por tabla)
+  Repository.java     ← Todas las consultas a la BD
+  HibernateUtil.java  ← Configuración de Hibernate
+service/
+  UserService.java    ← Lógica de negocio
+Main.java             ← Presentación (punto de entrada)
 ```
 
-**Beneficio principal**: si se cambia el ORM o la BD, solo se modifica el DAO, no el resto de la aplicación.
+**Beneficio principal**: si se cambia el ORM o la BD, solo se modifica el Repository, sin tocar la lógica ni la presentación.
 
-### Relación entre tabla, entidad y DAO
+### Relación entre tabla, entidad y Repository
 
 El siguiente diagrama muestra cómo una tabla de la base de datos se conecta con las distintas capas de la aplicación Java:
 
@@ -363,21 +364,21 @@ Tabla: users                      Entidad: User.java
          │                                          │
          │  Hibernate traduce objetos ↔ filas       │
          │                                          ▼
-         │                        DAO: UserDAO.java
+         │                        Repository.java
          │                        ┌──────────────────────────────────────────────────┐
-         │  INSERT INTO users ◄───│ save(User u)      → session.persist(u)           │
-         │  SELECT * FROM users◄──│ findAll()         → session.createQuery(...)     │
-         │  SELECT … WHERE id ◄───│ findById(id)      → session.get(User.class, id)  │
-         │  UPDATE users SET  ◄───│ update(User u)    → session.merge(u)             │
-         │  DELETE FROM users ◄───│ delete(id)        → session.delete(...)          │
+         │  INSERT INTO users ◄───│ saveUser(User u)      → session.persist(u)       │
+         │  SELECT * FROM users◄──│ findAllUsers()        → session.createQuery(...) │
+         │  SELECT … WHERE id ◄───│ findUserById(id)      → session.get(User, id)    │
+         │  UPDATE users SET  ◄───│ updateUser(User u)    → session.merge(u)         │
+         │  DELETE FROM users ◄───│ deleteUser(id)        → session.remove(...)      │
          └────────────────────────┘                                                  │
                                                                                      │
                                   CAPA DE LÓGICA                                     │
                                   Service: UserService.java                          │
                                   ┌──────────────────────────────────────────────────┘
-                                  │  registrar(name, active)  → valida + llama DAO
+                                  │  registrar(name, active)  → valida + llama Repository
                                   │  desactivar(id)           → busca, modifica, guarda
-                                  │  eliminar(id)             → delega al DAO
+                                  │  eliminar(id)             → delega al Repository
                                   └──────────────────────────────────────────────────
 
                                   CAPA DE PRESENTACIÓN
@@ -389,7 +390,7 @@ Tabla: users                      Entidad: User.java
                                   └──────────────────────────────────────────────────┘
 ```
 
-> Cada fila de la tabla `users` corresponde a una instancia de `User`. Hibernate se encarga de convertir automáticamente entre ambas representaciones. El DAO expone métodos con nombres de negocio (`save`, `findAll`) en lugar de SQL, y el Service agrega validaciones antes de llamar al DAO.
+> Cada fila de la tabla `users` corresponde a una instancia de `User`. Hibernate se encarga de convertir automáticamente entre ambas representaciones. El Repository expone métodos con nombres de negocio en lugar de SQL, y el Service agrega validaciones antes de llamar al Repository.
 
 ---
 
@@ -544,12 +545,14 @@ public class HibernateUtil {
 }
 ```
 
-### 5.4 DAO: operaciones CRUD
+### 5.4 Repository: operaciones CRUD
 
 ```java
-public class UserDAO {
+public class Repository {
 
-    public void save(User user) {
+    // ── User ──────────────────────────────────────────────────────────────────
+
+    public void saveUser(User user) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
             session.persist(user);        // INSERT
@@ -557,7 +560,7 @@ public class UserDAO {
         }
     }
 
-    public void update(User user) {
+    public void updateUser(User user) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
             session.merge(user);          // UPDATE
@@ -565,7 +568,7 @@ public class UserDAO {
         }
     }
 
-    public void delete(Integer id) {
+    public void deleteUser(Integer id) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
             User user = session.get(User.class, id);
@@ -574,13 +577,13 @@ public class UserDAO {
         }
     }
 
-    public User findById(Integer id) {
+    public User findUserById(Integer id) {
         try (Session session = HibernateUtil.getSession()) {
             return session.get(User.class, id);       // SELECT WHERE id = ?
         }
     }
 
-    public List<User> findAll() {
+    public List<User> findAllUsers() {
         try (Session session = HibernateUtil.getSession()) {
             // JPQL: opera sobre la clase Java User, no directamente sobre la tabla.
             // Hibernate traduce "FROM User" a "SELECT * FROM users".
@@ -603,10 +606,10 @@ public class UserDAO {
 
 ### 5.5 Consultas con CriteriaBuilder
 
-`CriteriaBuilder` permite construir consultas tipadas sin escribir SQL ni JPQL en texto:
+`CriteriaBuilder` permite construir consultas tipadas sin escribir SQL ni JPQL en texto. Va dentro del Repository:
 
 ```java
-public List<User> findAll(String nombre) {
+public List<User> findUsersByName(String nombre) {
     try (Session session = HibernateUtil.getSession()) {
 
         CriteriaBuilder builder = session.getCriteriaBuilder();

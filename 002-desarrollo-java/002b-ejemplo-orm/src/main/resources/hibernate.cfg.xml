@@ -33,7 +33,7 @@
                update      → agrega columnas nuevas, no borra datos existentes.
                validate    → verifica que las tablas coincidan con las entidades.
                none        → no toca el esquema (usar en producción). -->
-        <property name="hibernate.hbm2ddl.auto">create-drop</property>
+        <property name="hibernate.hbm2ddl.auto">update</property>
 
         <!-- ── Logging de SQL ─────────────────────────────────────────────── -->
 
@@ -55,7 +55,7 @@
 
         <!-- Cada clase marcada con @Entity debe registrarse aquí.
              Hibernate la analiza para saber a qué tabla mapearla. -->
-        <mapping class="org.example.model.User"/>
+        <mapping class="org.example.data.User"/>
 
     </session-factory>
 </hibernate-configuration>

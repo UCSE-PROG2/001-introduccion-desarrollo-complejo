@@ -1,27 +1,34 @@
-package org.example.dao;
+package org.example.data;
 
-import org.example.model.User;
-import org.example.utils.HibernateUtil;
 import org.hibernate.Session;
 
 import java.util.List;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CAPA DE DATOS — DAO (Data Access Object)
+// CAPA DE DATOS — Repository
 //
-// El DAO concentra todas las operaciones de acceso a la base de datos
-// para una entidad. El resto de la aplicación (Service, Main) no escribe
-// SQL ni conoce a Hibernate: solo llama a los métodos de este DAO.
+// El Repository concentra todas las operaciones de acceso a la base de datos
+// de la aplicación en un único archivo.
 //
-// Si en el futuro se cambia la BD o el ORM, solo se modifica este archivo.
+// Por qué un archivo por entidad en proyectos reales:
+//   En aplicaciones con muchas entidades (Alumno, Materia, Inscripción, etc.)
+//   conviene tener un AlumnoRepository, MateriaRepository, etc. para mantener
+//   el código organizado. En este ejemplo hay una sola entidad, así que todo
+//   queda en un único Repository.
+//
+// El resto de la aplicación (Service, Main) no conoce Hibernate ni Session:
+// solo llama a los métodos de este Repository.
 // ─────────────────────────────────────────────────────────────────────────────
-public class UserDAO {
+public class Repository {
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // User
+    // ═══════════════════════════════════════════════════════════════════════
 
     // ── INSERT ────────────────────────────────────────────────────────────────
-    public void save(User user) {
+    public void saveUser(User user) {
         // try-with-resources garantiza que la Session se cierre al terminar,
-        // incluso si ocurre una excepción. Equivale a llamar session.close()
-        // en un bloque finally.
+        // incluso si ocurre una excepción.
         try (Session session = HibernateUtil.getSession()) {
 
             // Las operaciones que modifican datos (INSERT, UPDATE, DELETE)
@@ -39,7 +46,7 @@ public class UserDAO {
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
-    public void update(User user) {
+    public void updateUser(User user) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
 
@@ -53,13 +60,13 @@ public class UserDAO {
     }
 
     // ── DELETE ────────────────────────────────────────────────────────────────
-    public void delete(Integer id) {
+    public void deleteUser(Integer id) {
         try (Session session = HibernateUtil.getSession()) {
             session.beginTransaction();
 
             // Para eliminar, Hibernate necesita un objeto "managed" (gestionado
             // por la sesión actual). Por eso primero lo buscamos con get()
-            // y luego lo pasamos a delete().
+            // y luego lo pasamos a remove().
             User user = session.get(User.class, id);
             if (user != null) {
                 session.remove(user);
@@ -70,7 +77,7 @@ public class UserDAO {
     }
 
     // ── SELECT por id ─────────────────────────────────────────────────────────
-    public User findById(Integer id) {
+    public User findUserById(Integer id) {
         try (Session session = HibernateUtil.getSession()) {
 
             // Las consultas de solo lectura no necesitan transacción explícita.
@@ -81,7 +88,7 @@ public class UserDAO {
     }
 
     // ── SELECT todos ──────────────────────────────────────────────────────────
-    public List<User> findAll() {
+    public List<User> findAllUsers() {
         try (Session session = HibernateUtil.getSession()) {
 
             // createQuery usa JPQL (Java Persistence Query Language), no SQL.

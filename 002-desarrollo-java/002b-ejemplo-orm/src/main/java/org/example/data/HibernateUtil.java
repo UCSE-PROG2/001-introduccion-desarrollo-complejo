@@ -1,4 +1,4 @@
-package org.example.utils;
+package org.example.data;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -24,7 +24,7 @@ public class HibernateUtil {
         try {
             // Configuration().configure() lee el archivo hibernate.cfg.xml
             // que está en src/main/resources. Desde ahí obtiene la URL de la BD,
-            // usuario, contraseña, dialecto y las clases entidad registradas.
+            // usuario, contraseña y las clases entidad registradas.
             sessionFactory = new Configuration().configure().buildSessionFactory();
         } catch (Exception e) {
             // Si falla la conexión o la configuración está mal, detenemos
