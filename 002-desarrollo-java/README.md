@@ -997,7 +997,100 @@ cq.select(pedidoRoot).where(filtroCiudad);
 
 ---
 
-### 7.9 Ordenamiento y límite de resultados
+### 7.9 Agrupamiento (GROUP BY y HAVING)
+
+Para agrupar resultados y aplicar funciones de agregación se usan `groupBy` y `having` sobre la `CriteriaQuery`.
+
+**Funciones de agregación disponibles:**
+
+| Método | SQL equivalente | Tipo de retorno |
+|--------|----------------|-----------------|
+| `cb.count(expr)` | `COUNT(campo)` | `Long` |
+| `cb.sum(expr)` | `SUM(campo)` | mismo tipo del campo |
+| `cb.avg(expr)` | `AVG(campo)` | `Double` |
+| `cb.max(expr)` | `MAX(campo)` | mismo tipo del campo |
+| `cb.min(expr)` | `MIN(campo)` | mismo tipo del campo |
+
+**Ejemplo: contar ventas por producto**
+
+```java
+public List<Object[]> contarVentasPorProducto() {
+    try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+        CriteriaBuilder cb = session.getCriteriaBuilder();
+        CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
+        Root<Venta> root = cq.from(Venta.class);
+
+        cq.multiselect(
+            root.get("producto"),          // campo por el que se agrupa
+            cb.count(root),                // COUNT(*)
+            cb.sum(root.get("total"))      // SUM(total)
+        );
+
+        cq.groupBy(root.get("producto"));
+        cq.orderBy(cb.desc(cb.sum(root.get("total"))));
+
+        return session.createQuery(cq).getResultList();
+        // Cada Object[] tiene: [String producto, Long cantidad, Double totalAcumulado]
+    }
+}
+```
+
+**Ejemplo: GROUP BY con HAVING (filtrar grupos)**
+
+`HAVING` filtra sobre el resultado del grupo, no sobre las filas individuales. Se aplica después del `groupBy`:
+
+```java
+public List<Object[]> productosConMasDe3Ventas() {
+    try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+        CriteriaBuilder cb = session.getCriteriaBuilder();
+        CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
+        Root<Venta> root = cq.from(Venta.class);
+
+        Expression<Long> cantidad = cb.count(root);
+
+        cq.multiselect(root.get("producto"), cantidad);
+        cq.groupBy(root.get("producto"));
+
+        // HAVING COUNT(*) > 3
+        cq.having(cb.greaterThan(cantidad, 3L));
+
+        return session.createQuery(cq).getResultList();
+    }
+}
+```
+
+**Ejemplo: GROUP BY por campo de entidad relacionada (con Join)**
+
+```java
+// Cantidad de pedidos por cliente (Pedido @ManyToOne→ Cliente)
+public List<Object[]> pedidosPorCliente() {
+    try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+
+        CriteriaBuilder cb = session.getCriteriaBuilder();
+        CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
+        Root<Pedido> root = cq.from(Pedido.class);
+
+        Join<Pedido, Cliente> clienteJoin = root.join("cliente", JoinType.LEFT);
+
+        cq.multiselect(
+            clienteJoin.get("nombre"),
+            cb.count(root)
+        );
+        cq.groupBy(clienteJoin.get("nombre"));
+        cq.orderBy(cb.desc(cb.count(root)));
+
+        return session.createQuery(cq).getResultList();
+    }
+}
+```
+
+> **Diferencia clave entre WHERE y HAVING**: `WHERE` filtra filas antes de agrupar (va en `cq.where(...)`), mientras que `HAVING` filtra grupos después de agrupar (va en `cq.having(...)`). Se pueden usar ambos en la misma consulta.
+
+---
+
+### 7.10 Ordenamiento y límite de resultados
 
 ```java
 // ORDER BY campo ASC
