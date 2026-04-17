@@ -19,8 +19,15 @@ Registrar productos y consultar cuáles tienen bajo stock o están discontinuado
 
 Implementar:
 - `Producto.java` — entidad con campos: `nombre` (String), `precio` (Double), `stock` (Integer), `activo` (Boolean)
-- `ProductoRepository.java` — Singleton con métodos: `guardar`, `listarTodos`, `listarConBajoStock(int limite)`, `listarActivos`
-- `ProductoService.java` — con métodos: `registrar`, `calcularValorTotalInventario`, `reporteBajoStock(int limite)`
+- `ProductoRepository.java` — Singleton con los siguientes métodos:
+  - `guardar` — INSERT: persiste un nuevo producto en la base de datos
+  - `listarTodos` — SELECT sin filtros: trae todos los registros de la tabla
+  - `listarConBajoStock(int limite)` — SELECT con filtro `<=` sobre el campo `stock`: trae solo los productos cuyo stock sea menor o igual al límite recibido
+  - `listarActivos` — SELECT con filtro de igualdad (`=`) sobre el campo booleano `activo`: trae solo los que están activos
+- `ProductoService.java` — con los siguientes métodos:
+  - `registrar` — llama al repository para insertar; el campo `activo` siempre arranca en `true`
+  - `calcularValorTotalInventario` — no hace consulta extra: itera la lista de activos y acumula `precio * stock` en memoria
+  - `reporteBajoStock(int limite)` — delega al repository la búsqueda filtrada y muestra el resultado por pantalla
 
 ### Script SQL
 
@@ -45,8 +52,15 @@ Registrar turnos de pacientes y consultar disponibilidad por médico o por fecha
 
 Implementar:
 - `Turno.java` — entidad con campos: `paciente` (String), `medico` (String), `fecha` (LocalDate), `confirmado` (Boolean)
-- `TurnoRepository.java` — Singleton con métodos: `guardar`, `buscarPorMedico`, `buscarPorFecha`, `contarConfirmadosPorMedico`
-- `TurnoService.java` — con métodos: `reservar`, `mostrarTurnosDel(String medico)`, `mostrarTurnosDeFecha(LocalDate fecha)`
+- `TurnoRepository.java` — Singleton con los siguientes métodos:
+  - `guardar` — INSERT: persiste un nuevo turno; `confirmado` arranca en `false`
+  - `buscarPorMedico(String medico)` — SELECT con filtro de igualdad (`=`) sobre el campo `medico`
+  - `buscarPorFecha(LocalDate fecha)` — SELECT con filtro de igualdad (`=`) sobre el campo `fecha`
+  - `contarConfirmadosPorMedico(String medico)` — SELECT con `COUNT` y dos filtros combinados con `AND`: igualdad en `medico` y igualdad en `confirmado = true`; devuelve un `Long`
+- `TurnoService.java` — con los siguientes métodos:
+  - `reservar` — llama al repository para insertar el turno
+  - `mostrarTurnosDel(String medico)` — busca por médico y además consulta cuántos están confirmados para mostrarlo en el encabezado
+  - `mostrarTurnosDeFecha(LocalDate fecha)` — busca por fecha y lista los resultados por pantalla
 
 ### Script SQL
 
@@ -69,8 +83,14 @@ Administrar empleados y calcular métricas salariales.
 
 Implementar:
 - `Empleado.java` — entidad con campos: `nombre` (String), `apellido` (String), `salario` (Double), `fechaIngreso` (LocalDate) — columna `fecha_ingreso`
-- `EmpleadoRepository.java` — Singleton con métodos: `guardar`, `listarTodos`, `listarConSalarioMayorA(Double minimo)`, `calcularPromedioDeSalarios`
-- `EmpleadoService.java` — con métodos: `contratar`, `reporteSalarial` (muestra promedio y empleados sobre el promedio)
+- `EmpleadoRepository.java` — Singleton con los siguientes métodos:
+  - `guardar` — INSERT: persiste un nuevo empleado; `fechaIngreso` se setea con la fecha actual
+  - `listarTodos` — SELECT sin filtros: trae todos los empleados
+  - `listarConSalarioMayorA(Double minimo)` — SELECT con filtro `>` sobre el campo `salario`, ordenado de mayor a menor (`ORDER BY salario DESC`)
+  - `calcularPromedioDeSalarios` — SELECT con función de agregación `AVG` sobre `salario`; devuelve un `Double`
+- `EmpleadoService.java` — con los siguientes métodos:
+  - `contratar` — llama al repository para insertar el empleado
+  - `reporteSalarial` — primero consulta el promedio, luego reutiliza `listarConSalarioMayorA` pasando ese promedio como filtro para mostrar quiénes están por encima
 
 ### Script SQL
 
@@ -93,8 +113,17 @@ Gestionar el catálogo de una biblioteca y verificar disponibilidad para présta
 
 Implementar:
 - `Libro.java` — entidad con campos: `titulo` (String), `autor` (String), `anioPublicacion` (Integer) — columna `anio_publicacion`, `disponible` (Boolean)
-- `LibroRepository.java` — Singleton con métodos: `guardar`, `buscarPorAutor`, `listarDisponibles`, `buscarPorId`, `actualizarDisponibilidad`
-- `LibroService.java` — con métodos: `agregar`, `prestar(Long id)` (valida que esté disponible), `mostrarDisponibles`, `buscarPorAutor`
+- `LibroRepository.java` — Singleton con los siguientes métodos:
+  - `guardar` — INSERT: persiste un nuevo libro; `disponible` arranca en `true`
+  - `buscarPorAutor(String autor)` — SELECT con filtro de igualdad (`=`) sobre `autor`, ordenado por `anioPublicacion ASC`
+  - `listarDisponibles` — SELECT con filtro de igualdad (`=`) sobre el campo booleano `disponible`
+  - `buscarPorId(Long id)` — SELECT por clave primaria usando `session.get()`; devuelve `null` si no existe
+  - `actualizarDisponibilidad(Long id, boolean disponible)` — UPDATE: busca el libro por id dentro de la misma transacción y modifica el campo `disponible`, luego hace `merge`
+- `LibroService.java` — con los siguientes métodos:
+  - `agregar` — llama al repository para insertar el libro
+  - `prestar(Long id)` — primero busca por id; si no existe o ya está prestado, muestra un mensaje y corta; si está disponible, llama a `actualizarDisponibilidad` con `false`
+  - `mostrarDisponibles` — delega al repository y lista por pantalla
+  - `buscarPorAutor` — delega al repository y lista por pantalla, mostrando si cada libro está disponible o prestado
 
 ### Script SQL
 
@@ -117,8 +146,15 @@ Registrar ventas diarias y analizar el rendimiento por producto y por día.
 
 Implementar:
 - `Venta.java` — entidad con campos: `producto` (String), `cantidad` (Integer), `total` (Double), `fecha` (LocalDate)
-- `VentaRepository.java` — Singleton con métodos: `guardar`, `buscarPorFecha`, `totalRecaudadoEnFecha`, `rankingDeProductos` (GROUP BY con SUM)
-- `VentaService.java` — con métodos: `registrar` (calcula el total a partir de precio unitario), `resumenDelDia`, `rankingProductos`
+- `VentaRepository.java` — Singleton con los siguientes métodos:
+  - `guardar` — INSERT: persiste una nueva venta; `fecha` se setea con la fecha actual
+  - `buscarPorFecha(LocalDate fecha)` — SELECT con filtro de igualdad (`=`) sobre el campo `fecha`
+  - `totalRecaudadoEnFecha(LocalDate fecha)` — SELECT con función de agregación `SUM` sobre `total` y filtro de igualdad en `fecha`; devuelve `Double` (puede ser `null` si no hay ventas)
+  - `rankingDeProductos` — SELECT con `GROUP BY producto` y `SUM(total)` como acumulado, ordenado de mayor a menor por ese acumulado; devuelve una lista de `Object[]` donde cada fila tiene el nombre del producto y el total acumulado
+- `VentaService.java` — con los siguientes métodos:
+  - `registrar` — calcula `total = cantidad * precioUnitario` en el servicio antes de insertar; el repository no recibe el precio unitario, solo la entidad ya armada
+  - `resumenDelDia` — consulta ventas de hoy y el total recaudado del día, y los muestra por pantalla
+  - `rankingProductos` — delega al repository y muestra la lista ordenada con posición, nombre y total acumulado
 
 ### Script SQL
 
