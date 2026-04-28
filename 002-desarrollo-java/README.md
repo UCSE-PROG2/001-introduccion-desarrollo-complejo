@@ -17,6 +17,7 @@
 6. [Relaciones entre entidades](#6-relaciones-entre-entidades)
 7. [Consultas avanzadas con CriteriaBuilder](#7-consultas-avanzadas-con-criteriabuilder)
 8. [Pruebas unitarias con H2](#8-pruebas-unitarias-con-h2)
+   - [8.1 Cobertura de código con JaCoCo](#81-cobertura-de-código-con-jacoco)
 
 ---
 
@@ -1301,6 +1302,115 @@ Reporta PASSED / FAILED
 # Ver el reporte HTML con detalle de cada test
 # Resultado en: build/reports/tests/test/index.html
 ```
+
+---
+
+### 8.1 Cobertura de código con JaCoCo
+
+#### ¿Qué es la cobertura de código?
+
+La **cobertura de código** (*code coverage*) es una métrica que indica qué porcentaje del código fuente es ejecutado cuando corren los tests. Permite identificar porciones del código que no tienen tests asociados.
+
+| Tipo de cobertura | Qué mide |
+|-------------------|----------|
+| **Instrucción** | Qué instrucciones bytecode se ejecutaron al menos una vez |
+| **Rama** | Cuántas ramas de decisión (`if`/`else`, `switch`) se recorrieron |
+| **Línea** | Qué líneas de código fuente fueron alcanzadas |
+| **Método** | Qué métodos fueron invocados durante los tests |
+| **Clase** | Qué clases fueron instanciadas o accedidas |
+
+> **Cobertura alta ≠ tests buenos.** Un test puede ejecutar una línea sin verificar su resultado con ningún `assert`. La cobertura es una señal de alarma —cobertura baja indica código sin tests—, no una garantía de calidad. El objetivo no es llegar al 100%, sino asegurarse de que la lógica crítica está cubierta.
+
+#### JaCoCo
+
+**JaCoCo** (Java Code Coverage) es la herramienta de cobertura más utilizada en proyectos Java. Se integra con Gradle mediante un plugin oficial y genera reportes interactivos en HTML, además de XML y CSV para integraciones con plataformas de CI.
+
+No requiere descargar nada manualmente: Gradle lo descarga automáticamente al declarar el plugin.
+
+#### Configuración en Gradle
+
+Se agrega el plugin `jacoco` al `build.gradle` del proyecto:
+
+```groovy
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco'          // habilita el soporte de cobertura con JaCoCo
+}
+
+// ...resto de dependencias y configuración existente...
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport  // genera el reporte automáticamente al terminar los tests
+}
+
+jacocoTestReport {
+    dependsOn test          // requiere que los tests hayan corrido antes
+    reports {
+        html.required = true    // reporte visual interactivo
+        xml.required  = false   // útil para SonarQube, Codecov u otros servicios de CI
+        csv.required  = false
+    }
+}
+```
+
+#### Ejecutar y ver el reporte
+
+```bash
+# Corre los tests y genera el reporte de cobertura en un solo paso
+./gradlew test jacocoTestReport
+```
+
+Al finalizar, el reporte HTML se genera en:
+
+```
+build/reports/jacoco/test/html/index.html
+```
+
+Abrirlo en el navegador muestra una tabla con todas las clases del proyecto y el porcentaje de cobertura por instrucción y por rama.
+
+#### Interpretar el reporte
+
+```
+build/reports/jacoco/test/html/
+├── index.html                       ← resumen general por paquete
+└── org.example.data/
+    ├── Repository.java.html         ← detalle línea por línea
+    ├── Alumno.java.html
+    └── ...
+```
+
+Al abrir el detalle de una clase, las líneas se colorean según su estado:
+
+| Color | Significado |
+|-------|-------------|
+| Verde | Línea ejecutada completamente por al menos un test |
+| Rojo | Línea no ejecutada por ningún test |
+| Amarillo | Rama parcialmente cubierta (por ejemplo: se probó el `if` pero no el `else`) |
+
+El porcentaje global del proyecto aparece en la fila superior del `index.html`. Es normal que las entidades (`@Entity`) tengan baja cobertura de rama porque sus getters/setters generan muchas rutas que los tests de negocio no recorren explícitamente.
+
+#### Umbral mínimo de cobertura (opcional)
+
+Se puede configurar que el build falle si la cobertura cae por debajo de un porcentaje mínimo. Esto es útil en proyectos con integración continua para evitar que se incorporen cambios sin tests:
+
+```groovy
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.70  // falla si la cobertura de instrucciones es menor al 70%
+            }
+        }
+    }
+}
+
+// Incluir la verificación dentro del ciclo check (que corre antes de package y publish)
+check.dependsOn jacocoTestCoverageVerification
+```
+
+Con este bloque, `./gradlew check` falla si la cobertura cae por debajo del umbral definido.
 
 ---
 
